@@ -31,6 +31,7 @@ export function newCard(name = "Mi tarjeta") {
     interestFreeSingle: true,
     creditLimit: "",
     availableCredit: "",
+    paymentHistory: [],
     purchases: [],
   };
 }
@@ -86,6 +87,7 @@ export function normalizeCard(raw) {
         rateOverrideType:
           purchase.rateOverrideType === "annual" ? "annual" : "monthly",
         interestFree: purchase.interestFree === true,
+        creditImpact: purchase.creditImpact === true,
         entryMode:
           purchase.entryMode === "statement" ? "statement" : "purchase",
         processDate: validDate(purchase.processDate)
@@ -104,6 +106,17 @@ export function normalizeCard(raw) {
           : card.referenceDate,
       };
     });
+  card.paymentHistory = (
+    Array.isArray(raw.paymentHistory) ? raw.paymentHistory : []
+  )
+    .filter((payment) => payment && Number(payment.amount) > 0)
+    .map((payment) => ({
+      id: typeof payment.id === "string" ? payment.id : crypto.randomUUID(),
+      date: validDate(payment.date) ? payment.date : card.referenceDate,
+      amount: numeric(payment.amount, "0"),
+      availableApplied: payment.availableApplied === true,
+      availableChange: numeric(payment.availableChange ?? "0", "0"),
+    }));
   return card;
 }
 

@@ -9,6 +9,7 @@ const migrationUrls = [
   new URL("../migrations/003_previous_balance_charges.sql", import.meta.url),
   new URL("../migrations/004_previous_balance_interest_breakdown.sql", import.meta.url),
   new URL("../migrations/005_purchase_interest_free.sql", import.meta.url),
+  new URL("../migrations/006_credit_movements.sql", import.meta.url),
 ];
 const ownerA = "00000000-0000-4000-8000-000000000001";
 const ownerB = "00000000-0000-4000-8000-000000000002";
@@ -307,6 +308,41 @@ describe(
       assert.deepEqual(rows.rows, [{ version: 2 }]);
     });
 
+    it("stores payment history and reversibility flags through the workspace RPC", async () => {
+      const withPayment = {
+        cards: [
+          {
+            id: "fictional-card",
+            name: "Escenario ficticio",
+            purchases: [{ id: "fictional-purchase", creditImpact: true }],
+            paymentHistory: [
+              {
+                id: "payment-1",
+                date: "2026-10-06",
+                amount: "50000",
+                availableApplied: true,
+                availableChange: "25000",
+              },
+            ],
+          },
+        ],
+      };
+      await asRole("authenticated", ownerA, async () => {
+        assert.equal(Number((await save(0, withPayment)).version), 1);
+        const invalid = structuredClone(withPayment);
+        invalid.cards[0].paymentHistory[0].amount = "0";
+        await rejectsSql(
+          () => save(1, invalid),
+          "22023",
+          /INVALID_WORKSPACE_PAYLOAD/,
+        );
+      });
+      const rows = await database.query(
+        "select payload from public.calculation_workspaces",
+      );
+      assert.deepEqual(rows.rows, [{ payload: withPayment }]);
+    });
+
     it("rejects forbidden cardNumber keys and malformed, nested or oversized payloads", async () => {
       const invalidPayloads = [
         null,
@@ -320,6 +356,7 @@ describe(
         { cards: [{ name: "Ficticio", cardNumber: "fictional-not-a-PAN" }] },
         { cards: [{ purchases: [{ cardNumber: "fictional-not-a-PAN" }] }] },
         { cards: [{ purchases: [{ expiry: "fictional" }] }] },
+        { cards: [{ purchases: [{ creditImpact: "yes" }] }] },
         { cards: [{ name: { nested: "invalid" } }] },
         { cards: [{ purchases: [{}] }] },
         { cards: [{ purchases: {} }] },

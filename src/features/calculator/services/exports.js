@@ -121,6 +121,15 @@ export function exportCSV(card, result) {
       purchase.statementExtraAmount || "",
       purchase.statementNextDate || "",
     ]),
+    [],
+    ["Historial de pagos"],
+    ["Fecha", "Valor pagado", "Aumentó el cupo", "Ajuste efectivo de cupo"],
+    ...(card.paymentHistory || []).map((payment) => [
+      payment.date,
+      payment.amount,
+      payment.availableApplied ? "Sí" : "No",
+      payment.availableChange,
+    ]),
   ];
   const blob = new Blob(
     ["\uFEFF", rows.map((row) => row.map(safeCell).join(";")).join("\r\n")],
@@ -253,6 +262,19 @@ export async function exportPDF(card, result) {
         purchase.statementExtraAmount === ""
           ? ""
           : money(purchase.statementExtraAmount),
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [16, 110, 91] },
+    });
+  if (card.paymentHistory?.length)
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 12,
+      head: [["Fecha de pago", "Valor", "Aumentó el cupo", "Ajuste efectivo"]],
+      body: card.paymentHistory.map((payment) => [
+        payment.date,
+        money(payment.amount),
+        payment.availableApplied ? "Sí" : "No",
+        money(payment.availableChange),
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [16, 110, 91] },

@@ -5,6 +5,7 @@ import { Metric } from "../../../components/ui/Metric.jsx";
 import { SectionHeading } from "../../../components/ui/SectionHeading.jsx";
 import { PurchaseFields } from "../../purchases/components/PurchaseFields.jsx";
 import { PurchaseList } from "../../purchases/components/PurchaseList.jsx";
+import { CreditLimitField } from "../../cards/components/CreditLimitField.jsx";
 import { PaymentSummary } from "./PaymentSummary.jsx";
 
 export function Overview({
@@ -19,6 +20,8 @@ export function Overview({
   setConfirmation,
   updateCard,
   setTab,
+  setAvailableCredit,
+  removePurchase,
 }) {
   return (
     <>
@@ -55,30 +58,20 @@ export function Overview({
           <section className="section">
             <SectionHeading icon={CreditCard} title="Cupo de la tarjeta" />
             <div className="field-grid two">
-              <Field
+              <CreditLimitField
                 label="Cupo total de la tarjeta"
-                type="number"
-                min="0"
-                step="0.01"
                 value={card.creditLimit}
                 onChange={fieldChange("creditLimit")}
-                prefix="$"
-                placeholder="Sin registrar"
               />
-              <Field
+              <CreditLimitField
                 label="Cupo actual disponible"
-                type="number"
-                min="0"
-                step="0.01"
                 value={card.availableCredit}
-                onChange={fieldChange("availableCredit")}
-                prefix="$"
-                placeholder="Sin registrar"
+                onChange={setAvailableCredit}
               />
             </div>
             <p className="disclosure">
-              Cupos informados por tu banco. Se guardan por tarjeta y no se
-              modifican automáticamente con las compras o los abonos.
+              Los cupos informados quedan bloqueados. Las compras nuevas los
+              reducen y los pagos registrados los aumentan automáticamente.
             </p>
             {card.creditLimit !== "" &&
               card.availableCredit !== "" &&
@@ -151,7 +144,7 @@ export function Overview({
                 prefix="$"
               />
               <Field
-                label="Abonos (total pagado, incluye intereses)"
+                label="Otros abonos para el próximo corte"
                 type="number"
                 min="0"
                 step="0.01"
@@ -160,6 +153,10 @@ export function Overview({
                 prefix="$"
               />
             </div>
+            <p className="disclosure">
+              Los pagos registrados en la pestaña Pagos se suman aquí; ingresa
+              solo otros abonos que no estén en el historial.
+            </p>
             <details className="assumptions">
               <summary>Condiciones del cálculo</summary>
               <p>
@@ -191,7 +188,7 @@ export function Overview({
             current={current}
             setEditing={setEditing}
             setConfirmation={setConfirmation}
-            updateCard={updateCard}
+            removePurchase={removePurchase}
           />
         </div>
         <PaymentSummary

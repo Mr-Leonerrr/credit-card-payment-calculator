@@ -9,6 +9,7 @@ export const blankPurchase = () => ({
   date: today(),
   rateOverride: "",
   interestFree: false,
+  creditImpact: false,
   entryMode: "purchase",
   processDate: "",
   statementBalance: "",

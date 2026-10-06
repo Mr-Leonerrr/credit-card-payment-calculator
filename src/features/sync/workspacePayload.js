@@ -22,6 +22,7 @@ export const CARD_KEYS = [
   "interestFreeSingle",
   "creditLimit",
   "availableCredit",
+  "paymentHistory",
   "purchases",
 ];
 export const PURCHASE_KEYS = [
@@ -33,6 +34,7 @@ export const PURCHASE_KEYS = [
   "date",
   "rateOverride",
   "interestFree",
+  "creditImpact",
   "rateOverrideType",
   "entryMode",
   "processDate",
@@ -143,6 +145,24 @@ export function validatePayload(payload) {
       numeric(card[key], { optional: true });
     }
     requireValid(Array.isArray(card.purchases));
+    requireValid(Array.isArray(card.paymentHistory));
+    const paymentIds = new Set();
+    for (const payment of card.paymentHistory) {
+      exactKeys(payment, [
+        "id",
+        "date",
+        "amount",
+        "availableApplied",
+        "availableChange",
+      ]);
+      text(payment.id, 128, true);
+      requireValid(!paymentIds.has(payment.id));
+      paymentIds.add(payment.id);
+      date(payment.date);
+      numeric(payment.amount, { minimum: Number.MIN_VALUE });
+      numeric(payment.availableChange);
+      requireValid(typeof payment.availableApplied === "boolean");
+    }
     const purchaseIds = new Set();
     for (const purchase of card.purchases) {
       exactKeys(purchase, PURCHASE_KEYS);
@@ -165,6 +185,7 @@ export function validatePayload(payload) {
       date(purchase.date);
       numeric(purchase.rateOverride, { optional: true });
       requireValid(typeof purchase.interestFree === "boolean");
+      requireValid(typeof purchase.creditImpact === "boolean");
       rateType(purchase.rateOverrideType);
       date(purchase.processDate, true);
       numeric(purchase.statementBalance, {
@@ -258,11 +279,18 @@ export function validateRow(row, userId) {
         ? card.purchases.map((purchase) => ({
             ...purchase,
             statementPayment: purchase.statementPayment ?? "",
-              interestFree: purchase.interestFree ?? false,
+            interestFree: purchase.interestFree ?? false,
+            creditImpact: purchase.creditImpact ?? false,
             statementIncludesExtras: purchase.statementIncludesExtras ?? false,
             statementExtraAmount: purchase.statementExtraAmount ?? "",
           }))
         : card?.purchases,
+      paymentHistory: Array.isArray(card?.paymentHistory)
+        ? card.paymentHistory.map((payment) => ({
+            ...payment,
+            availableChange: payment.availableChange ?? "0",
+          }))
+        : [],
     })),
   };
   validatePayload(payload);

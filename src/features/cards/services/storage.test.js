@@ -143,6 +143,26 @@ test("las compras promocionales al 0% se conservan y las antiguas mantienen su t
   assert.equal(restored.purchases[0].interestFree, true);
   assert.equal(restored.purchases[1].interestFree, false);
 });
+test("pagos registrados y marcas de cupo sobreviven a la persistencia local", () => {
+  const restored = normalizeCard({
+    paymentHistory: [
+      {
+        id: "payment-1",
+        date: "2026-10-06",
+        amount: "50000",
+        availableApplied: true,
+        availableChange: "50000",
+      },
+    ],
+    purchases: [
+      { id: "purchase-1", amount: "100000", creditImpact: true },
+    ],
+  });
+  assert.equal(restored.paymentHistory[0].amount, "50000");
+  assert.equal(restored.paymentHistory[0].availableApplied, true);
+  assert.equal(restored.paymentHistory[0].availableChange, "50000");
+  assert.equal(restored.purchases[0].creditImpact, true);
+});
 test("saldo anterior y cargos ya incluidos se conservan al recargar", () => {
   const original = {
     ...newCard("Principal"),

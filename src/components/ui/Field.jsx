@@ -38,7 +38,10 @@ export function Field({
     id: inputId,
     "aria-describedby": `${inputId}-help`,
     value,
-    onBlur: normalize,
+    onBlur: (event) => {
+      normalize();
+      props.onBlur?.(event);
+    },
   };
   return (
     <div className="field">

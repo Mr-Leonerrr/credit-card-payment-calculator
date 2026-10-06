@@ -6,6 +6,7 @@ import {
   Wallet,
   ChartNoAxesCombined,
   Settings2,
+  HandCoins,
 } from "lucide-react";
 import { dateLabel } from "../utils/date.js";
 import { IconButton } from "../components/ui/IconButton.jsx";
@@ -17,6 +18,7 @@ import { Projection } from "../features/calculator/components/Projection.jsx";
 import { WorkspaceDialogs } from "./WorkspaceDialogs.jsx";
 import { useWorkspace } from "./useWorkspace.js";
 import { SyncStatus } from "../features/sync/SyncStatus.jsx";
+import { Payments } from "../features/cards/components/Payments.jsx";
 
 export function App() {
   const controller = useWorkspace();
@@ -117,6 +119,7 @@ export function App() {
           <nav className="tabs" aria-label="Vistas de la tarjeta">
             {[
               { id: "overview", label: "Resumen", icon: Wallet },
+              { id: "payments", label: "Pagos", icon: HandCoins },
               {
                 id: "projection",
                 label: "Proyección",
@@ -149,6 +152,18 @@ export function App() {
               setWorkspace={setWorkspace}
               calculation={calculation}
             />
+          )}
+          {tab === "payments" && (
+            <fieldset
+              className="workspace-edit-boundary"
+              disabled={!controller.canEdit}
+            >
+              <Payments
+                card={card}
+                recordPayment={controller.recordPayment}
+                removePayment={controller.removePayment}
+              />
+            </fieldset>
           )}
           {tab === "settings" && (
             <fieldset
