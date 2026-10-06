@@ -1,13 +1,9 @@
 name: Validate Development
 
 on:
-  push:
-    branches:
-      - development
-
   pull_request:
     branches:
-      - development
+      - develop
       - main
 
 jobs:
