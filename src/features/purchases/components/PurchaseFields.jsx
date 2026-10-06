@@ -1,5 +1,6 @@
 import { integer } from "../../calculator/model/calculator.js";
 import { Field } from "../../../components/ui/Field.jsx";
+import { FieldLabel } from "../../../components/ui/FieldLabel.jsx";
 
 export function PurchaseFields({
   purchase,
@@ -26,6 +27,9 @@ export function PurchaseFields({
         updated.rateOverride = "";
         updated.rateOverrideType = value === "statement" ? "annual" : "monthly";
         updated.statementNextDate = previous.statementNextDate || nextDate;
+      }
+      if (field === "statementIncludesExtras" && !value) {
+        updated.statementExtraAmount = "";
       }
       return updated;
     });
@@ -148,15 +152,47 @@ export function PurchaseFields({
               required
             />
             <Field
-              label="Valor cuota mes (solo capital, opcional)"
+              label="Valor cuota mes total reportado"
               type="number"
               min="0.01"
               step="0.01"
-              value={purchase.statementCapital ?? ""}
-              onChange={(value) => change("statementCapital", value)}
+              value={purchase.statementPayment ?? ""}
+              onChange={(value) => change("statementPayment", value)}
               prefix="$"
-              placeholder="Saldo dividido entre pendientes"
+              placeholder="Incluye el interés E.A. del mes"
+              required={purchase.statementIncludesExtras}
             />
+            <div className="statement-extra-option">
+              <div>
+                <FieldLabel
+                  label="¿Incluye mora u otros adicionales?"
+                  inputId={`statement-extra-${purchase.id}`}
+                />
+                <small>Desglosa el valor para no contarlo como capital</small>
+              </div>
+              <input
+                id={`statement-extra-${purchase.id}`}
+                type="checkbox"
+                role="switch"
+                checked={purchase.statementIncludesExtras === true}
+                onChange={(event) =>
+                  change("statementIncludesExtras", event.target.checked)
+                }
+              />
+            </div>
+            {purchase.statementIncludesExtras && (
+              <Field
+                label="Valor adicional incluido en la cuota"
+                type="number"
+                min="0"
+                step="0.01"
+                value={purchase.statementExtraAmount ?? ""}
+                onChange={(value) => change("statementExtraAmount", value)}
+                prefix="$"
+                required
+                placeholder="Ej.: mora incluida en la cuota"
+              />
+            )}
             <Field
               label="Tasa E.A. del extracto (%)"
               type="number"

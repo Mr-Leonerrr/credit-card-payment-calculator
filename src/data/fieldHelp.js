@@ -55,8 +55,12 @@ export const fieldHelp = {
     "Copia la columna Cuotas Pendientes. Ejemplo: 04 se ingresa como 4. No implica que las otras cuotas estén pagadas: el banco puede excluir aquí la cuota facturada en este corte.",
   "Saldo pendiente del extracto":
     "Copia el capital que reporta la columna Saldo Pendiente. Ejemplo ficticio: 800.003 para una refinanciación. Ese saldo puede excluir la cuota del mes ya facturada; revisa si está pagada antes de proyectar solo las cuotas futuras. No lo dupliques en Saldo anterior.",
-  "Valor cuota mes (solo capital, opcional)":
-    "Usa Valor Cuota Mes solo si el banco confirma que es capital sin intereses. Ejemplo ficticio: 200.001 de capital por cuota. Si incluye intereses o no estás seguro, déjalo vacío: se divide el saldo entre las cuotas pendientes. La última cuota ajusta el saldo restante.",
+  "Valor cuota mes total reportado":
+    "Copia el total de la cuota mensual que muestra el extracto. La aplicación descuenta el interés E.A. estimado del saldo y toma el resto como capital. Ejemplo ficticio: si reporta 335.158, ese total incluye el interés ordinario del mes. Déjalo vacío para dividir el saldo entre cuotas pendientes.",
+  "¿Incluye mora u otros adicionales?":
+    "Activa solo si el valor de cuota mes también contiene mora u otros cargos aparte del interés E.A. ordinario. Ejemplo ficticio: una cuota de 335.158 incluye 5.000 de mora; ingresa esos 5.000 abajo para descontarlos del capital y contarlos una sola vez como cargo.",
+  "Valor adicional incluido en la cuota":
+    "Ingresa el total de mora u otros adicionales que ya vienen dentro del valor de la cuota. Ejemplo ficticio: 5.000. Se resta de la cuota antes de calcular el capital y se incluye una vez en los cargos del corte.",
   "Tasa E.A. del extracto (%)":
     "Copia la tasa E.A. de ese movimiento, no una tasa mensual. Ejemplo ficticio: en este campo numérico 24.5 representa 24,5% efectivo anual; usa el punto como decimal, no como miles. La aplicación la convierte a mensual. Déjala vacía para usar la tasa configurada de la tarjeta.",
   "Primer corte a proyectar":

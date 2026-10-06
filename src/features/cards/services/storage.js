@@ -88,6 +88,9 @@ export function normalizeCard(raw) {
           integer(purchase.statementRemaining, 0, installments),
         ),
         statementCapital: numeric(purchase.statementCapital ?? ""),
+        statementPayment: numeric(purchase.statementPayment ?? ""),
+        statementIncludesExtras: purchase.statementIncludesExtras === true,
+        statementExtraAmount: numeric(purchase.statementExtraAmount ?? ""),
         statementNextDate: validDate(purchase.statementNextDate)
           ? purchase.statementNextDate
           : card.referenceDate,
@@ -138,14 +141,12 @@ export function loadWorkspace(storage) {
         rate:
           purchases.find((purchase) => Number(purchase?.monthlyRate) > 0)
             ?.monthlyRate || "2",
-        purchases: purchases
-          .filter(Boolean)
-          .map((purchase) => ({
-            ...purchase,
-            rateOverride: purchase.monthlyRate ?? "",
-            date: today(),
-            paidInstallments: "0",
-          })),
+        purchases: purchases.filter(Boolean).map((purchase) => ({
+          ...purchase,
+          rateOverride: purchase.monthlyRate ?? "",
+          date: today(),
+          paidInstallments: "0",
+        })),
       });
       return {
         data: { cards: [card], activeId: card.id, theme: "light", horizon: 6 },

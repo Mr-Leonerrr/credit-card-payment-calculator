@@ -66,7 +66,13 @@ export function PurchaseList({
                   <span>Capital pendiente</span>
                   <small>
                     Próximo corte:{" "}
-                    {money(detail ? detail.capital + detail.interest : 0)}
+                    {money(
+                      detail
+                        ? detail.capital +
+                            detail.interest +
+                            (detail.extraCharges || 0)
+                        : 0,
+                    )}
                   </small>
                 </div>
                 <div className="row-actions">

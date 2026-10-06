@@ -7,7 +7,11 @@ import {
   STORAGE_KEY,
   LEGACY_KEY,
 } from "./storage.js";
-import { project } from "../../calculator/model/calculator.js";
+import {
+  monthlyRate,
+  project,
+  purchaseMonthlyRate,
+} from "../../calculator/model/calculator.js";
 
 const storage = (entries) => ({ getItem: (key) => entries[key] ?? null });
 test("migra saldo anterior y compras sin perder tasas particulares", () => {
@@ -140,6 +144,12 @@ test("modo extracto conserva saldo, cuotas, fecha de proceso y tasa EA al recarg
         statementBalance: "800003",
         statementRemaining: "4",
         statementCapital: "200001",
+        statementPayment: "240000",
+        statementIncludesExtras: true,
+        statementExtraAmount: "5000",
+        statementPayment: "240000",
+        statementIncludesExtras: true,
+        statementExtraAmount: "5000",
         statementNextDate: "2025-04-20",
         rateOverride: "24.5",
         rateOverrideType: "annual",
@@ -159,6 +169,20 @@ test("modo extracto conserva saldo, cuotas, fecha de proceso y tasa EA al recarg
   assert.equal(restored.purchases[0].statementRemaining, "4");
   assert.equal(restored.purchases[0].processDate, "2025-01-12");
   assert.equal(restored.purchases[0].rateOverrideType, "annual");
+  assert.equal(restored.purchases[0].statementPayment, "240000");
+  assert.equal(restored.purchases[0].statementIncludesExtras, true);
+  assert.equal(restored.purchases[0].statementExtraAmount, "5000");
+  assert.equal(restored.purchases[0].statementPayment, "240000");
+  assert.equal(restored.purchases[0].statementIncludesExtras, true);
+  assert.equal(restored.purchases[0].statementExtraAmount, "5000");
   assert.equal(project(restored, 6).purchaseBalance, 800003);
-  assert.equal(project(restored, 6).rows[0].purchaseCapital, 200001);
+  const monthlyInterest =
+    Number(restored.purchases[0].statementBalance) *
+    purchaseMonthlyRate(restored.purchases[0], monthlyRate(restored));
+  assert.ok(
+    Math.abs(
+      project(restored, 6).rows[0].purchaseCapital -
+        (240000 - monthlyInterest - 5000),
+    ) < 1e-8,
+  );
 });

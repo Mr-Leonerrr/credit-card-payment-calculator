@@ -1090,6 +1090,64 @@ tbody tr:hover {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
+.statement-extra-option {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.statement-extra-option .field-heading {
+  margin-bottom: 0;
+}
+.statement-extra-option .field-title {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.statement-extra-option small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.statement-extra-option input[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 24px;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--muted);
+  cursor: pointer;
+}
+.statement-extra-option input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 150ms;
+}
+.statement-extra-option input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+.statement-extra-option input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+}
+.statement-extra-option input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
 .model-disclosure {
   padding: 26px 0;
   border-bottom: 1px solid var(--line);
