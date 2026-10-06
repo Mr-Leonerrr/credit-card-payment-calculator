@@ -1,8 +1,12 @@
 {
-  "name": "tarjeta-cuota-calculador",
+  "name": "cc-payment-calculator",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "author": {
+    "name": "Leonardo Natera",
+    "url": "https://github.com/Mr-Leonerrr/"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
