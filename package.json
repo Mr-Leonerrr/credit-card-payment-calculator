@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/*.test.js"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
+    "@floating-ui/react": "^0.27.20",
     "@tailwindcss/vite": "latest",
+    "@vitejs/plugin-react": "latest",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^1.52.0",
     "react": "latest",
     "react-dom": "latest",
+    "react-number-format": "^5.4.5",
     "tailwindcss": "latest",
     "vite": "latest"
   },
-  "devDependencies": {},
   "allowScripts": {
     "fsevents@2.3.3": true
   }
