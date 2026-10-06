@@ -12,7 +12,7 @@ import {
   writeAccountCache,
 } from "./accountCache.js";
 
-const editable = (status) => status === "synced" || status === "saving";
+const editable = (status) => ["synced", "saving", "error"].includes(status);
 const messageOf = (error) => error?.message || "SYNC_FAILED";
 
 export function createWorkspaceController({
@@ -21,9 +21,6 @@ export function createWorkspaceController({
   storage,
   isCurrent = () => true,
   isOnline = () => globalThis.navigator?.onLine !== false,
-  debounceMs = 500,
-  setTimer = setTimeout,
-  clearTimer = clearTimeout,
 }) {
   let state = {
     workspace: emptyWorkspace(),
@@ -40,7 +37,6 @@ export function createWorkspaceController({
   let savePromise = null;
   let readPromise = null;
   let importing = null;
-  let timer = null;
   const importedFingerprints = new Set();
   const listeners = new Set();
   const current = (token = generation) =>
@@ -53,13 +49,7 @@ export function createWorkspaceController({
     for (const listener of listeners) listener();
   }
 
-  function cancelTimer() {
-    if (timer !== null) clearTimer(timer);
-    timer = null;
-  }
-
   function fail(error) {
-    cancelTimer();
     const message = messageOf(error);
     publish({
       status: message.includes("SYNC_CONFLICT") ? "conflict" : "error",
@@ -120,25 +110,7 @@ export function createWorkspaceController({
     } catch {}
   }
 
-  function schedule() {
-    cancelTimer();
-    if (
-      !current() ||
-      !state.canEdit ||
-      !state.dirty ||
-      savePromise ||
-      state.error === "INVALID_DRAFT"
-    )
-      return;
-    const token = generation;
-    timer = setTimer(() => {
-      timer = null;
-      if (current(token)) void flush();
-    }, debounceMs);
-  }
-
   async function flush() {
-    cancelTimer();
     if (savePromise) return savePromise;
     if (!current() || !state.canEdit || !state.dirty || version === null)
       return false;
@@ -202,16 +174,15 @@ export function createWorkspaceController({
       return await operation;
     } finally {
       if (savePromise === operation) savePromise = null;
-      if (current(token)) schedule();
     }
   }
 
-  async function fetchCloud({ discard = false } = {}) {
+  async function fetchCloud({ discard = false, background = false } = {}) {
     if (!current()) return false;
     if (readPromise) return readPromise;
     const token = generation;
-    cancelTimer();
-    publish({ status: isOnline() ? "loading" : "offline", error: "" });
+    if (!background)
+      publish({ status: isOnline() ? "loading" : "offline", error: "" });
     const operation = Promise.resolve().then(async () => {
       if (savePromise) await savePromise;
       if (!current(token) || !isOnline()) return false;
@@ -224,6 +195,14 @@ export function createWorkspaceController({
           return false;
         const row = result === null ? null : validateRow(result, userId);
         const remoteVersion = row?.version ?? 0;
+        if (
+          background &&
+          !discard &&
+          !state.dirty &&
+          remoteVersion === version &&
+          state.status === "synced"
+        )
+          return true;
         if (state.dirty && !discard) {
           if (remoteVersion !== version) {
             fail(new Error("SYNC_CONFLICT"));
@@ -267,7 +246,6 @@ export function createWorkspaceController({
       return await operation;
     } finally {
       if (readPromise === operation) readPromise = null;
-      if (current(token)) schedule();
     }
   }
 
@@ -298,7 +276,6 @@ export function createWorkspaceController({
     stop() {
       active = false;
       generation += 1;
-      cancelTimer();
     },
     setWorkspace(update) {
       if (!current()) return false;
@@ -327,10 +304,8 @@ export function createWorkspaceController({
           dirty: after !== confirmedPayload,
           error: "",
         });
-        schedule();
         return true;
       } catch {
-        cancelTimer();
         publish({
           workspace: next,
           dirty: true,
@@ -347,12 +322,31 @@ export function createWorkspaceController({
       if (!current(token)) return false;
       return fetchCloud({ discard: true });
     },
+    discard() {
+      if (!current() || savePromise || version === null) return false;
+      publish({
+        workspace: confirmedPayload
+          ? hydratePayload(JSON.parse(confirmedPayload), state.workspace)
+          : emptyWorkspace(),
+        dirty: false,
+        error: "",
+        status: isOnline()
+          ? state.status === "conflict"
+            ? "conflict"
+            : version === 0
+              ? "needs-choice"
+              : "synced"
+          : "offline",
+      });
+      return true;
+    },
     async importLocal(includeGuest = true) {
       const token = generation;
       if (
         !current(token) ||
         !isOnline() ||
         importing ||
+        state.dirty ||
         !(state.canEdit || state.status === "needs-choice")
       )
         return false;
@@ -398,11 +392,10 @@ export function createWorkspaceController({
     refresh() {
       if (!current() || state.status === "error" || state.status === "conflict")
         return Promise.resolve(false);
-      return fetchCloud();
+      return fetchCloud({ background: version !== null });
     },
     offline() {
       if (!current()) return;
-      cancelTimer();
       publish({
         status: ["error", "conflict"].includes(state.status)
           ? state.status

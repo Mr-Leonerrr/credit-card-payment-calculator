@@ -177,6 +177,21 @@ export function useWorkspace() {
       text: `Se agregarán a la cuenta ${auth.user?.email || "actual"}. No se borrarán los originales ni se reemplazarán los cálculos de la nube.`,
       action: () => cloud.importLocal(true),
     });
+  const requestDiscard = () => {
+    if (!cloud.dirty || cloud.status === "saving") return;
+    setConfirmation({
+      title: "¿Descartar los cambios?",
+      text: "Se restaurarán los cálculos de la última versión confirmada. No se modificarán los datos locales de invitado ni se enviarán cambios a la nube.",
+      action: () => {
+        if (cloud.discard()) {
+          setEditing(null);
+          setCreatingCard(false);
+          setDraft(blankPurchase());
+          setNotice("Cambios descartados.");
+        }
+      },
+    });
+  };
 
   return {
     auth,
@@ -186,6 +201,7 @@ export function useWorkspace() {
     requestLogout,
     requestReload,
     requestImport,
+    requestDiscard,
     workspace,
     setWorkspace,
     notice,

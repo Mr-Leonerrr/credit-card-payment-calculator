@@ -56,6 +56,16 @@ export function useCloudWorkspace(user) {
     };
   }, [controller]);
 
+  useEffect(() => {
+    if (!snapshot.dirty) return;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    globalThis.addEventListener?.("beforeunload", warn);
+    return () => globalThis.removeEventListener?.("beforeunload", warn);
+  }, [snapshot.dirty]);
+
   return {
     ...snapshot,
     canEdit:
@@ -65,5 +75,7 @@ export function useCloudWorkspace(user) {
     setWorkspace: controller.setWorkspace,
     reload: controller.reload,
     importLocal: controller.importLocal,
+    synchronize: controller.flush,
+    discard: controller.discard,
   };
 }
