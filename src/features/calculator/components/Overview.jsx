@@ -31,7 +31,7 @@ export function Overview({
           value={card.availableCredit === "" ? null : card.availableCredit}
         />
         <Metric
-          label="Pago total pendiente estimad"
+          label="Pago total pendiente estimado"
           value={calculation.totalPending}
         />
       </div>

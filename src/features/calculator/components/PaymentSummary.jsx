@@ -29,7 +29,7 @@ export function PaymentSummary({ card, calculation, current, setTab }) {
           <strong>{money(current.totalPayment)}</strong>
         </div>
         <div className="statement-total general-total">
-          <span>Pago total pendiente estimad</span>
+          <span>Pago total pendiente estimado</span>
           <strong>
             {calculation.totalPending == null
               ? "Sin registrar"

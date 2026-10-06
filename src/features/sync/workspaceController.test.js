@@ -130,7 +130,7 @@ test("first fetch blocks writes; no row requires explicit choice and never impor
   assert.notEqual(setup.getRemote().payload.cards[0].name, "Guest");
 });
 
-test("local preferences never enqueue a save; financial changes debounce into one snapshot", async () => {
+test("financial edits and refresh never save until explicit synchronization", async () => {
   const setup = fixture();
   await setup.controller.start();
   setup.controller.setWorkspace((workspace) => ({
@@ -142,7 +142,12 @@ test("local preferences never enqueue a save; financial changes debounce into on
   assert.equal(setup.controller.getSnapshot().dirty, false);
   rename(setup.controller, "One");
   rename(setup.controller, "Two");
-  assert.equal(setup.timers.size, 1);
+  assert.equal(setup.timers.size, 0);
+  await setup.controller.refresh();
+  assert.equal(
+    setup.calls.filter(([operation]) => operation === "save").length,
+    0,
+  );
   await setup.controller.flush();
   assert.equal(
     setup.calls.filter(([operation]) => operation === "save").length,
@@ -275,7 +280,7 @@ test("invalid partial edit stays pending and editable without sending or caching
     true,
   );
   assert.equal(setup.controller.getSnapshot().error, "");
-  assert.equal(setup.timers.size, 1);
+  assert.equal(setup.timers.size, 0);
   await setup.controller.flush();
   const saves = setup.calls.filter(([operation]) => operation === "save");
   assert.equal(saves.length, 1);
@@ -288,7 +293,7 @@ test("correcting an invalid draft back to the confirmed payload clears dirty wit
   await setup.controller.start();
   const rate = setup.controller.getSnapshot().workspace.cards[0].rate;
   rename(setup.controller, "Pending");
-  assert.equal(setup.timers.size, 1);
+  assert.equal(setup.timers.size, 0);
   assert.equal(setRate(setup.controller, "2."), true);
   assert.equal(setup.timers.size, 0);
   const confirmed = JSON.parse(setup.values.get(accountCacheKey("a"))).payload;
@@ -666,7 +671,7 @@ test("focus refresh waits for in-flight save rather than conflicting with its ow
   await Promise.resolve();
   rename(setup.controller, "Second");
   const refresh = setup.controller.refresh();
-  assert.equal(setup.controller.getSnapshot().canEdit, false);
+  assert.equal(setup.controller.getSnapshot().canEdit, true);
   const row = { user_id: "a", schema_version: 1, version: 2, payload };
   setup.setRemote(row);
   saving.resolve(row);
@@ -679,7 +684,7 @@ test("focus refresh waits for in-flight save rather than conflicting with its ow
   assert.equal(setup.controller.getSnapshot().dirty, true);
 });
 
-test("refresh waiting on a failed save cannot clear its freeze or auto-retry", async () => {
+test("refresh waiting on a failed save cannot discard the draft or auto-retry", async () => {
   const saving = deferred();
   const setup = fixture({ repository: { save: () => saving.promise } });
   await setup.controller.start();
