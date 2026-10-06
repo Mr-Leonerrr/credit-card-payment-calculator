@@ -11,10 +11,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/features/calculator/model/*.test.js src/features/cards/services/*.test.js"
+    "test": "node --test src/features/calculator/model/*.test.js src/features/cards/services/*.test.js src/features/sync/*.test.js supabase/tests/*.test.js"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
+    "@supabase/supabase-js": "^2.117.2",
     "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
     "jspdf": "^4.2.1",
@@ -28,5 +29,8 @@
   },
   "allowScripts": {
     "fsevents@2.3.3": true
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }

@@ -1,6 +1,45 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
+.workspace-edit-boundary {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.workspace-edit-boundary > .sidebar {
+  height: 100%;
+}
+.account-controls,
+.sync-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.account-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.sync-status {
+  flex-wrap: wrap;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+@media (max-width: 700px) {
+  .account-email {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 8px;
+  }
+}
+
 :root {
   font-family: "DM Sans", "Trebuchet MS", sans-serif;
   color: #202c29;
