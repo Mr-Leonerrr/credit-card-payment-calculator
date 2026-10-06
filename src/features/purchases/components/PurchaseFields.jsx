@@ -170,7 +170,6 @@ export function PurchaseFields({
             <Field
               label="Primer corte a proyectar"
               type="date"
-              min={nextDate}
               value={purchase.statementNextDate || nextDate}
               onChange={(value) => change("statementNextDate", value)}
               required

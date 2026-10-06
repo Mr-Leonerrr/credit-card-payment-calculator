@@ -608,12 +608,16 @@ test("failed and stale imports never write a successful marker", async () => {
   }
 });
 
-test("confirmed remote deletion clears account cache and requires a new explicit choice", async () => {
+test("remote deletion is announced and requires confirmation before clearing account cache", async () => {
   const setup = fixture();
   await setup.controller.start();
   assert.ok(setup.values.has(accountCacheKey("a")));
   setup.setRemote(null);
   await setup.controller.refresh();
+  assert.equal(setup.controller.getSnapshot().status, "remote-update");
+  assert.equal(setup.controller.getSnapshot().canEdit, false);
+  assert.equal(setup.values.has(accountCacheKey("a")), true);
+  assert.equal(await setup.controller.reload(), true);
   assert.equal(setup.controller.getSnapshot().status, "needs-choice");
   assert.equal(setup.controller.getSnapshot().canEdit, false);
   assert.equal(setup.values.has(accountCacheKey("a")), false);

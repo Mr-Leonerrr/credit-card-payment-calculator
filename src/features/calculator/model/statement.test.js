@@ -63,6 +63,17 @@ test("primer corte explícito no depende de pagos supuestos ni de la fecha origi
   assert.equal(result.rows[0].minimum, 0);
   assert.equal(result.rows[1].purchaseCapital, 200001);
 });
+test("permite iniciar la proyección desde un primer corte pasado sin acumular cuotas vencidas", () => {
+  const result = project(
+    { ...card, purchases: [{ ...refinance, statementNextDate: "2025-02-20" }] },
+    4,
+  );
+  assert.deepEqual(
+    result.rows.map((row) => row.purchaseCapital),
+    [200001, 200001, 200001, 200000],
+  );
+  assert.equal(result.rows[0].date, "2025-04-20");
+});
 test("seis movimientos ficticios suman sus saldos sin duplicación", () => {
   const entries = [
     refinance,

@@ -6,6 +6,7 @@ const labels = {
   synced: "Guardado en tu cuenta",
   saving: "Guardando cambios…",
   offline: "Sin conexión · Solo consulta",
+  "remote-update": "Hay cambios nuevos en la nube. Actualiza para verlos.",
   conflict:
     "Otro dispositivo cambió estos cálculos. Exporta tus cambios antes de cargar la versión guardada.",
   error: "No se pudo sincronizar. Los cambios se conservan; puedes reintentar.",
@@ -57,6 +58,15 @@ export function SyncStatus({
                 Importar datos locales
               </button>
             )}
+          {cloud.status === "remote-update" && (
+            <button
+              type="button"
+              className="button primary"
+              onClick={requestReload}
+            >
+              Actualizar ahora
+            </button>
+          )}
           {["error", "conflict", "offline"].includes(cloud.status) && (
             <button
               type="button"
