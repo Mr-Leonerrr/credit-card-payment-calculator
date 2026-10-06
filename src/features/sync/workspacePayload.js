@@ -12,6 +12,8 @@ export const CARD_KEYS = [
   "cutoffDay",
   "referenceDate",
   "previousBalance",
+  "previousBalanceIncludesCharges",
+  "previousBalanceIncludedCharges",
   "minimumPercent",
   "minimumFloor",
   "recurringCharges",
@@ -20,6 +22,7 @@ export const CARD_KEYS = [
   "interestFreeSingle",
   "creditLimit",
   "availableCredit",
+  "paymentHistory",
   "purchases",
 ];
 export const PURCHASE_KEYS = [
@@ -30,6 +33,8 @@ export const PURCHASE_KEYS = [
   "paidInstallments",
   "date",
   "rateOverride",
+  "interestFree",
+  "creditImpact",
   "rateOverrideType",
   "entryMode",
   "processDate",
@@ -112,6 +117,21 @@ export function validatePayload(payload) {
     numeric(card.cutoffDay, { minimum: 1, maximum: 31, integer: true });
     numeric(card.minimumPercent, { maximum: 100 });
     numeric(card.minimumFloor);
+    requireValid(typeof card.previousBalanceIncludesCharges === "boolean");
+    numeric(card.previousBalanceIncludedCharges, { optional: true });
+    requireValid(
+      card.previousBalanceIncludesCharges ||
+        card.previousBalanceIncludedCharges === "",
+    );
+    requireValid(
+      !card.previousBalanceIncludesCharges ||
+        card.previousBalanceIncludedCharges !== "",
+    );
+    requireValid(
+      !card.previousBalanceIncludesCharges ||
+        Number(card.previousBalanceIncludedCharges) <=
+          Number(card.previousBalance),
+    );
     date(card.referenceDate);
     requireValid(typeof card.interestFreeSingle === "boolean");
     for (const key of [
@@ -125,6 +145,24 @@ export function validatePayload(payload) {
       numeric(card[key], { optional: true });
     }
     requireValid(Array.isArray(card.purchases));
+    requireValid(Array.isArray(card.paymentHistory));
+    const paymentIds = new Set();
+    for (const payment of card.paymentHistory) {
+      exactKeys(payment, [
+        "id",
+        "date",
+        "amount",
+        "availableApplied",
+        "availableChange",
+      ]);
+      text(payment.id, 128, true);
+      requireValid(!paymentIds.has(payment.id));
+      paymentIds.add(payment.id);
+      date(payment.date);
+      numeric(payment.amount, { minimum: Number.MIN_VALUE });
+      numeric(payment.availableChange);
+      requireValid(typeof payment.availableApplied === "boolean");
+    }
     const purchaseIds = new Set();
     for (const purchase of card.purchases) {
       exactKeys(purchase, PURCHASE_KEYS);
@@ -146,6 +184,8 @@ export function validatePayload(payload) {
       });
       date(purchase.date);
       numeric(purchase.rateOverride, { optional: true });
+      requireValid(typeof purchase.interestFree === "boolean");
+      requireValid(typeof purchase.creditImpact === "boolean");
       rateType(purchase.rateOverrideType);
       date(purchase.processDate, true);
       numeric(purchase.statementBalance, {
@@ -232,15 +272,25 @@ export function validateRow(row, userId) {
   const payload = {
     ...row.payload,
     cards: row.payload.cards.map((card) => ({
+      previousBalanceIncludesCharges: false,
+      previousBalanceIncludedCharges: "",
       ...card,
       purchases: Array.isArray(card?.purchases)
         ? card.purchases.map((purchase) => ({
             ...purchase,
             statementPayment: purchase.statementPayment ?? "",
+            interestFree: purchase.interestFree ?? false,
+            creditImpact: purchase.creditImpact ?? false,
             statementIncludesExtras: purchase.statementIncludesExtras ?? false,
             statementExtraAmount: purchase.statementExtraAmount ?? "",
           }))
         : card?.purchases,
+      paymentHistory: Array.isArray(card?.paymentHistory)
+        ? card.paymentHistory.map((payment) => ({
+            ...payment,
+            availableChange: payment.availableChange ?? "0",
+          }))
+        : [],
     })),
   };
   validatePayload(payload);
@@ -268,7 +318,9 @@ export function readGuestPayload(storage) {
   const saved = storage?.getItem(STORAGE_KEY);
   if (!saved) return null;
   const raw = JSON.parse(saved);
-  const payload = serializeWorkspace({ cards: raw.cards });
+  const payload = serializeWorkspace({
+    cards: Array.isArray(raw.cards) ? raw.cards.map(normalizeCard) : raw.cards,
+  });
   return hasRealData(payload) ? payload : null;
 }
 

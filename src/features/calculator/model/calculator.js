@@ -72,7 +72,11 @@ export function purchaseMonthlyRate(purchase, defaultRate) {
 export function project(card, months = 6) {
   const rate = monthlyRate(card);
   const firstCutoff = nextCutoff(card.referenceDate || today(), card.cutoffDay);
-  let previousBalance = number(card.previousBalance);
+  const reportedPreviousBalance = number(card.previousBalance);
+  const includedPreviousCharges = card.previousBalanceIncludesCharges
+    ? Math.min(reportedPreviousBalance, number(card.previousBalanceIncludedCharges))
+    : 0;
+  let previousBalance = Math.max(0, reportedPreviousBalance - includedPreviousCharges);
   const purchases = card.purchases.map((purchase) => {
     const installments = integer(purchase.installments);
     const paid = integer(purchase.paidInstallments, 0, installments);
@@ -122,8 +126,8 @@ export function project(card, months = 6) {
     const details = active.map((purchase) => {
       const interest =
         purchase.entryMode !== "statement" &&
-        purchase.installments === 1 &&
-        card.interestFreeSingle
+        (purchase.interestFree === true ||
+          (purchase.installments === 1 && card.interestFreeSingle))
           ? 0
           : purchase.balance * purchaseMonthlyRate(purchase, rate);
       const includedExtra = purchase.statementIncludesExtras
@@ -161,7 +165,9 @@ export function project(card, months = 6) {
     const charges =
       number(card.recurringCharges) +
       statementCharges +
-      (month === 0 ? number(card.extraCharges) : 0);
+      (month === 0
+        ? number(card.extraCharges) + includedPreviousCharges
+        : 0);
     const capital = previousCapital + purchaseCapital;
     const grossMinimum = capital + interest + charges;
     const payment = month === 0 ? number(card.payments) : 0;
@@ -207,7 +213,10 @@ export function project(card, months = 6) {
   return {
     rows,
     rate,
-    previousBalance: number(card.previousBalance),
+    previousBalance: Math.max(
+      0,
+      reportedPreviousBalance - includedPreviousCharges,
+    ),
     purchaseBalance: card.purchases.reduce(
       (sum, purchase) => sum + purchaseBalance(purchase),
       0,

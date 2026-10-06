@@ -21,6 +21,8 @@ export function newCard(name = "Mi tarjeta") {
     cutoffDay: "20",
     referenceDate: today(),
     previousBalance: "",
+    previousBalanceIncludesCharges: false,
+    previousBalanceIncludedCharges: "",
     minimumPercent: "5",
     minimumFloor: "0",
     recurringCharges: "",
@@ -29,6 +31,7 @@ export function newCard(name = "Mi tarjeta") {
     interestFreeSingle: true,
     creditLimit: "",
     availableCredit: "",
+    paymentHistory: [],
     purchases: [],
   };
 }
@@ -49,6 +52,7 @@ export function normalizeCard(raw) {
   for (const field of [
     "rate",
     "previousBalance",
+    "previousBalanceIncludedCharges",
     "minimumPercent",
     "minimumFloor",
     "recurringCharges",
@@ -58,6 +62,10 @@ export function normalizeCard(raw) {
     "availableCredit",
   ]) {
     card[field] = numeric(raw[field] ?? defaults[field], defaults[field]);
+  }
+  card.previousBalanceIncludesCharges = raw.previousBalanceIncludesCharges === true;
+  if (!card.previousBalanceIncludesCharges) {
+    card.previousBalanceIncludedCharges = "";
   }
   card.purchases = (Array.isArray(raw.purchases) ? raw.purchases : [])
     .filter((purchase) => purchase && Number(purchase.amount) > 0)
@@ -78,6 +86,8 @@ export function normalizeCard(raw) {
             : numeric(purchase.rateOverride),
         rateOverrideType:
           purchase.rateOverrideType === "annual" ? "annual" : "monthly",
+        interestFree: purchase.interestFree === true,
+        creditImpact: purchase.creditImpact === true,
         entryMode:
           purchase.entryMode === "statement" ? "statement" : "purchase",
         processDate: validDate(purchase.processDate)
@@ -96,6 +106,17 @@ export function normalizeCard(raw) {
           : card.referenceDate,
       };
     });
+  card.paymentHistory = (
+    Array.isArray(raw.paymentHistory) ? raw.paymentHistory : []
+  )
+    .filter((payment) => payment && Number(payment.amount) > 0)
+    .map((payment) => ({
+      id: typeof payment.id === "string" ? payment.id : crypto.randomUUID(),
+      date: validDate(payment.date) ? payment.date : card.referenceDate,
+      amount: numeric(payment.amount, "0"),
+      availableApplied: payment.availableApplied === true,
+      availableChange: numeric(payment.availableChange ?? "0", "0"),
+    }));
   return card;
 }
 

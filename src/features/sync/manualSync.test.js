@@ -137,6 +137,7 @@ test("new remote version shows an update state and preserves the visible workspa
   await state.controller.refresh();
   assert.equal(state.controller.getSnapshot().status, "remote-update");
   assert.equal(state.controller.getSnapshot().canEdit, false);
+  assert.equal(state.controller.getSnapshot().dirty, false);
   assert.equal(state.controller.getSnapshot().workspace, visible);
   assert.equal(state.controller.getSnapshot().workspace.cards[0].name, "Mi tarjeta");
   assert.equal(state.writes(), 0);

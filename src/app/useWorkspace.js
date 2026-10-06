@@ -10,20 +10,27 @@ import {
   exportPDF,
 } from "../features/calculator/services/exports.js";
 import { blankPurchase } from "../features/purchases/model/purchase.js";
+import {
+  adjustAvailableCredit,
+  increaseAvailableCredit,
+  reduceAvailableCredit,
+} from "../features/cards/model/credit.js";
 import { useAuth } from "../features/auth/hooks/useAuth.js";
 import {
   useCloudWorkspace,
   clearAccountCache,
 } from "../features/sync/index.js";
 import { supabase } from "../lib/supabase.js";
+import { readTheme, saveTheme } from "./theme.js";
 
 export function useWorkspace() {
   const [loaded] = useState(() => loadWorkspace());
+  const [theme, setTheme] = useState(() => readTheme(loaded.data.theme));
   const [guestWorkspace, setGuestWorkspace] = useState(loaded.data);
   const [storageBlocked, setStorageBlocked] = useState(Boolean(loaded.blocked));
   const auth = useAuth();
   const cloud = useCloudWorkspace(auth.user);
-  const workspace = auth.user ? cloud.workspace : guestWorkspace;
+  const workspace = { ...(auth.user ? cloud.workspace : guestWorkspace), theme };
   const canEdit =
     !auth.loading && (auth.user ? cloud.canEdit : !storageBlocked);
   const setWorkspace = (update) => {
@@ -47,8 +54,9 @@ export function useWorkspace() {
   const current = calculation.rows[0];
 
   useEffect(() => {
-    document.documentElement.dataset.theme = workspace.theme;
-  }, [workspace.theme]);
+    document.documentElement.dataset.theme = theme;
+    saveTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (storageBlocked || auth.user || auth.loading) return;
@@ -79,6 +87,19 @@ export function useWorkspace() {
       ),
     }));
   const fieldChange = (field) => (value) => updateCard({ [field]: value });
+  const setAvailableCredit = (value) =>
+    updateCard({
+      availableCredit: value,
+      purchases: card.purchases.map((purchase) => ({
+        ...purchase,
+        creditImpact: false,
+      })),
+      paymentHistory: card.paymentHistory.map((payment) => ({
+        ...payment,
+        availableApplied: false,
+        availableChange: "0",
+      })),
+    });
   const selectCard = (id) => {
     setWorkspace((previous) => ({ ...previous, activeId: id }));
     setDraft(blankPurchase());
@@ -87,10 +108,26 @@ export function useWorkspace() {
   const addPurchase = (event) => {
     event.preventDefault();
     if (!canEdit) return;
+    const affectsCredit =
+      draft.entryMode !== "statement" && card.availableCredit !== "";
+    if (
+      affectsCredit &&
+      Number(draft.amount) > Number(card.availableCredit)
+    ) {
+      setNotice("La compra supera el cupo disponible registrado.");
+      return;
+    }
     updateCard({
+      ...(affectsCredit
+        ? { availableCredit: reduceAvailableCredit(card.availableCredit, draft.amount) }
+        : {}),
       purchases: [
         ...card.purchases,
-        { ...draft, description: draft.description.trim() || "Compra" },
+        {
+          ...draft,
+          description: draft.description.trim() || "Compra",
+          creditImpact: affectsCredit,
+        },
       ],
     });
     setDraft({
@@ -104,15 +141,120 @@ export function useWorkspace() {
   const savePurchase = (event) => {
     event.preventDefault();
     if (!canEdit) return;
+    const existing = card.purchases.find((purchase) => purchase.id === editing.id);
+    const tracked = existing?.creditImpact === true;
+    const creditDelta = tracked
+      ? Number(existing.amount) -
+        (editing.entryMode === "purchase" ? Number(editing.amount) : 0)
+      : 0;
+    if (
+      card.availableCredit !== "" &&
+      creditDelta < 0 &&
+      -creditDelta > Number(card.availableCredit)
+    ) {
+      setNotice("El cambio supera el cupo disponible registrado.");
+      return;
+    }
     updateCard({
+      ...(tracked && card.availableCredit !== ""
+        ? {
+            availableCredit: adjustAvailableCredit(
+              card.availableCredit,
+              creditDelta,
+              card.creditLimit,
+            ),
+          }
+        : {}),
       purchases: card.purchases.map((purchase) =>
         purchase.id === editing.id
-          ? { ...editing, description: editing.description.trim() || "Compra" }
+          ? {
+              ...editing,
+              creditImpact:
+                tracked && editing.entryMode === "purchase",
+              description: editing.description.trim() || "Compra",
+            }
           : purchase,
       ),
     });
     setEditing(null);
     setNotice("Compra actualizada.");
+  };
+  const removePurchase = (purchaseId) => {
+    const purchase = card.purchases.find((item) => item.id === purchaseId);
+    if (!purchase || !canEdit) return;
+    updateCard({
+      ...(purchase.creditImpact && card.availableCredit !== ""
+        ? {
+            availableCredit: adjustAvailableCredit(
+              card.availableCredit,
+              Number(purchase.amount),
+              card.creditLimit,
+            ),
+          }
+        : {}),
+      purchases: card.purchases.filter((item) => item.id !== purchaseId),
+    });
+  };
+  const recordPayment = ({ amount, date }) => {
+    const paymentAmount = Number(amount);
+    if (!canEdit || !Number.isFinite(paymentAmount) || paymentAmount <= 0)
+      return false;
+    const updatedAvailable =
+      card.availableCredit === ""
+        ? ""
+        : increaseAvailableCredit(
+            card.availableCredit,
+            paymentAmount,
+            card.creditLimit,
+          );
+    const availableChange =
+      updatedAvailable === ""
+        ? 0
+        : Number(updatedAvailable) - Number(card.availableCredit);
+    const availableApplied = availableChange > 0;
+    updateCard({
+      payments: String(Number((Number(card.payments || 0) + paymentAmount).toFixed(2))),
+      availableCredit: updatedAvailable === "" ? card.availableCredit : updatedAvailable,
+      paymentHistory: [
+        ...card.paymentHistory,
+        {
+          id: crypto.randomUUID(),
+          date,
+          amount: String(paymentAmount),
+          availableApplied,
+          availableChange: String(Math.max(0, availableChange)),
+        },
+      ],
+    });
+    setNotice(
+      availableApplied
+        ? "Pago registrado y cupo disponible actualizado."
+        : "Pago registrado. Ingresa el cupo disponible para actualizarlo con futuros pagos.",
+    );
+    return true;
+  };
+  const removePayment = (paymentId) => {
+    const payment = card.paymentHistory.find((item) => item.id === paymentId);
+    if (!payment || !canEdit) return;
+    updateCard({
+      payments: String(
+        Number(
+          Math.max(0, Number(card.payments || 0) - Number(payment.amount)).toFixed(2),
+        ),
+      ),
+      ...(payment.availableApplied && card.availableCredit !== ""
+        ? {
+            availableCredit: adjustAvailableCredit(
+              card.availableCredit,
+              -Number(payment.availableChange || 0),
+            ),
+          }
+        : {}),
+      paymentHistory: card.paymentHistory.filter(
+        (item) => item.id !== paymentId,
+      ),
+    });
+    setNotice("Pago eliminado y valores actualizados.");
   };
   const addCard = (event) => {
     event.preventDefault();
@@ -204,6 +346,7 @@ export function useWorkspace() {
     requestDiscard,
     workspace,
     setWorkspace,
+    toggleTheme: () => setTheme((previous) => previous === "dark" ? "light" : "dark"),
     notice,
     setNotice,
     saveError,
@@ -226,9 +369,13 @@ export function useWorkspace() {
     current,
     updateCard,
     fieldChange,
+    setAvailableCredit,
     selectCard,
     addPurchase,
     savePurchase,
+    removePurchase,
+    recordPayment,
+    removePayment,
     addCard,
     removeCard,
     exportCalculation,

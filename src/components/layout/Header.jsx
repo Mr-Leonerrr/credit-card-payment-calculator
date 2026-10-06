@@ -4,7 +4,7 @@ import { AccountControls } from "../../features/auth/components/AccountControls.
 
 export function Header({
   workspace,
-  setWorkspace,
+  toggleTheme,
   auth,
   configured,
   requestLogout,
@@ -37,12 +37,7 @@ export function Header({
               ? "Activar modo oscuro"
               : "Activar modo claro"
           }
-          onClick={() =>
-            setWorkspace((previous) => ({
-              ...previous,
-              theme: previous.theme === "light" ? "dark" : "light",
-            }))
-          }
+          onClick={toggleTheme}
         >
           {workspace.theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
         </IconButton>

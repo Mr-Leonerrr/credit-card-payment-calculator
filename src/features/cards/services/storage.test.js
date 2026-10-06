@@ -127,6 +127,58 @@ test("tarjetas antiguas o cupos inválidos quedan sin registrar, no en cero", ()
     "",
   );
 });
+test("tarjetas guardadas antiguas obtienen el desglose de intereses apagado", () => {
+  const card = normalizeCard({ previousBalance: "1000000" });
+  assert.equal(card.previousBalance, "1000000");
+  assert.equal(card.previousBalanceIncludesCharges, false);
+  assert.equal(card.previousBalanceIncludedCharges, "");
+});
+test("las compras promocionales al 0% se conservan y las antiguas mantienen su tasa", () => {
+  const restored = normalizeCard({
+    purchases: [
+      { id: "promo", amount: "300000", interestFree: true },
+      { id: "normal", amount: "300000" },
+    ],
+  });
+  assert.equal(restored.purchases[0].interestFree, true);
+  assert.equal(restored.purchases[1].interestFree, false);
+});
+test("pagos registrados y marcas de cupo sobreviven a la persistencia local", () => {
+  const restored = normalizeCard({
+    paymentHistory: [
+      {
+        id: "payment-1",
+        date: "2026-10-06",
+        amount: "50000",
+        availableApplied: true,
+        availableChange: "50000",
+      },
+    ],
+    purchases: [
+      { id: "purchase-1", amount: "100000", creditImpact: true },
+    ],
+  });
+  assert.equal(restored.paymentHistory[0].amount, "50000");
+  assert.equal(restored.paymentHistory[0].availableApplied, true);
+  assert.equal(restored.paymentHistory[0].availableChange, "50000");
+  assert.equal(restored.purchases[0].creditImpact, true);
+});
+test("saldo anterior y cargos ya incluidos se conservan al recargar", () => {
+  const original = {
+    ...newCard("Principal"),
+    previousBalance: "1000000",
+    previousBalanceIncludesCharges: true,
+    previousBalanceIncludedCharges: "20000",
+  };
+  const restored = loadWorkspace(
+    storage({
+      [STORAGE_KEY]: JSON.stringify({ cards: [original], activeId: original.id }),
+    }),
+  ).data.cards[0];
+  assert.equal(restored.previousBalance, "1000000");
+  assert.equal(restored.previousBalanceIncludesCharges, true);
+  assert.equal(restored.previousBalanceIncludedCharges, "20000");
+});
 test("modo extracto conserva saldo, cuotas, fecha de proceso y tasa EA al recargar", () => {
   const original = {
     ...newCard(),

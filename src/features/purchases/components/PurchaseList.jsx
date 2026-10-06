@@ -8,7 +8,7 @@ export function PurchaseList({
   current,
   setEditing,
   setConfirmation,
-  updateCard,
+  removePurchase,
 }) {
   return (
     <section className="section">
@@ -89,12 +89,7 @@ export function PurchaseList({
                       setConfirmation({
                         title: "¿Eliminar compra?",
                         text: purchase.description,
-                        action: () =>
-                          updateCard({
-                            purchases: card.purchases.filter(
-                              (item) => item.id !== purchase.id,
-                            ),
-                          }),
+                        action: () => removePurchase(purchase.id),
                       })
                     }
                   >

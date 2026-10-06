@@ -213,6 +213,27 @@ export function PurchaseFields({
           </>
         ) : (
           <>
+            <div className="statement-extra-option">
+              <div>
+                <FieldLabel
+                  label="Esta compra tiene interés 0%"
+                  inputId={`purchase-interest-free-${purchase.id}`}
+                />
+                <small>
+                  Actívalo para promociones sin interés, según las condiciones
+                  del comercio.
+                </small>
+              </div>
+              <input
+                id={`purchase-interest-free-${purchase.id}`}
+                type="checkbox"
+                role="switch"
+                checked={purchase.interestFree === true}
+                onChange={(event) =>
+                  change("interestFree", event.target.checked)
+                }
+              />
+            </div>
             <Field
               label="Cuotas pagadas"
               type="number"

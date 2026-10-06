@@ -8,6 +8,8 @@ export const blankPurchase = () => ({
   paidInstallments: "0",
   date: today(),
   rateOverride: "",
+  interestFree: false,
+  creditImpact: false,
   entryMode: "purchase",
   processDate: "",
   statementBalance: "",

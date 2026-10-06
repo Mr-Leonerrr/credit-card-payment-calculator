@@ -84,6 +84,67 @@ test("statement snapshots survive hydration without normalization filtering", ()
   );
 });
 
+test("purchase 0% promotion survives workspace round trips and requires a boolean", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    ...blankPurchase(),
+    amount: "900000",
+    installments: "3",
+    interestFree: true,
+  });
+  assert.equal(
+    hydratePayload(serializeWorkspace(workspace)).cards[0].purchases[0]
+      .interestFree,
+    true,
+  );
+  const invalid = structuredClone(workspace);
+  invalid.cards[0].purchases[0].interestFree = "yes";
+  assert.throws(
+    () => serializeWorkspace(invalid),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+});
+
+test("payment history round-trips and old cloud workspaces receive empty defaults", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].paymentHistory.push({
+    id: "payment-1",
+    date: "2026-10-06",
+    amount: "50000",
+    availableApplied: true,
+    availableChange: "50000",
+  });
+  assert.deepEqual(
+    hydratePayload(serializeWorkspace(workspace)).cards[0].paymentHistory,
+    workspace.cards[0].paymentHistory,
+  );
+  const payload = JSON.parse(JSON.stringify(serializeWorkspace(workspace)));
+  delete payload.cards[0].paymentHistory;
+  const row = validateRow(
+    { user_id: "owner", schema_version: 1, version: 1, payload },
+    "owner",
+  );
+  assert.deepEqual(row.payload.cards[0].paymentHistory, []);
+});
+
+test("payment rows require a positive amount and contain only allowed fields", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].paymentHistory.push({
+    id: "payment-1",
+    date: "2026-10-06",
+    amount: "50000",
+    availableApplied: true,
+    availableChange: "25000",
+  });
+  assert.doesNotThrow(() => serializeWorkspace(workspace));
+  const invalid = structuredClone(workspace);
+  invalid.cards[0].paymentHistory[0].amount = "0";
+  assert.throws(() => serializeWorkspace(invalid), /INVALID_WORKSPACE_PAYLOAD/);
+  const unknown = structuredClone(workspace);
+  unknown.cards[0].paymentHistory[0].accountNumber = "forbidden";
+  assert.throws(() => serializeWorkspace(unknown), /INVALID_WORKSPACE_PAYLOAD/);
+});
+
 test("statement quota breakdown survives sync validation and rejects incomplete recargos", () => {
   const workspace = emptyWorkspace();
   workspace.cards[0].purchases.push({
@@ -133,6 +194,7 @@ test("older cloud snapshots gain empty quota-extra defaults without losing legac
         JSON.stringify(serializeWorkspace(legacy), (key, value) =>
           [
             "statementPayment",
+            "interestFree",
             "statementIncludesExtras",
             "statementExtraAmount",
           ].includes(key)
@@ -148,6 +210,42 @@ test("older cloud snapshots gain empty quota-extra defaults without losing legac
   assert.equal(purchase.statementPayment, "");
   assert.equal(purchase.statementIncludesExtras, false);
   assert.equal(purchase.statementExtraAmount, "");
+  assert.equal(purchase.interestFree, false);
+});
+
+test("older guest purchases normalize before an explicit account import", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    id: "old-purchase",
+    description: "Compra anterior",
+    amount: "900000",
+    installments: "3",
+    paidInstallments: "0",
+    date: "2026-10-01",
+  });
+  const storage = {
+    getItem: (key) =>
+      key === STORAGE_KEY
+        ? JSON.stringify({ cards: workspace.cards })
+        : null,
+  };
+  assert.equal(readGuestPayload(storage).cards[0].purchases[0].interestFree, false);
+});
+test("older cloud cards gain defaults for previous-balance charge breakdown", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].previousBalance = "750000";
+  const payload = JSON.parse(JSON.stringify(serializeWorkspace(workspace)));
+  delete payload.cards[0].previousBalanceIncludesCharges;
+  delete payload.cards[0].previousBalanceIncludedCharges;
+  const hydrated = hydratePayload(
+    validateRow(
+      { user_id: "owner", schema_version: 1, version: 2, payload },
+      "owner",
+    ).payload,
+  ).cards[0];
+  assert.equal(hydrated.previousBalance, "750000");
+  assert.equal(hydrated.previousBalanceIncludesCharges, false);
+  assert.equal(hydrated.previousBalanceIncludedCharges, "");
 });
 
 test("statement payment extras round-trip and reject unchecked or incomplete charges", () => {

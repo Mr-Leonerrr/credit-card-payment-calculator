@@ -6,6 +6,10 @@ import { PGlite } from "@electric-sql/pglite";
 const migrationUrls = [
   new URL("../migrations/001_calculation_workspaces.sql", import.meta.url),
   new URL("../migrations/002_statement_payment_breakdown.sql", import.meta.url),
+  new URL("../migrations/003_previous_balance_charges.sql", import.meta.url),
+  new URL("../migrations/004_previous_balance_interest_breakdown.sql", import.meta.url),
+  new URL("../migrations/005_purchase_interest_free.sql", import.meta.url),
+  new URL("../migrations/006_credit_movements.sql", import.meta.url),
 ];
 const ownerA = "00000000-0000-4000-8000-000000000001";
 const ownerB = "00000000-0000-4000-8000-000000000002";
@@ -258,6 +262,87 @@ describe(
       }
     });
 
+    it("accepts the per-purchase 0% flag and rejects non-boolean values", async () => {
+      const purchasePayload = (interestFree) => ({
+        cards: [
+          {
+            id: "fictional-card",
+            name: "Escenario ficticio",
+            purchases: [
+              {
+                id: "fictional-purchase",
+                description: "Compra promocional",
+                amount: "900000",
+                installments: "3",
+                paidInstallments: "0",
+                date: "2026-10-01",
+                rateOverride: "",
+                rateOverrideType: "monthly",
+                entryMode: "purchase",
+                processDate: "",
+                statementBalance: "",
+                statementRemaining: "3",
+                statementCapital: "",
+                statementNextDate: "",
+                statementPayment: "",
+                statementIncludesExtras: false,
+                statementExtraAmount: "",
+                interestFree,
+              },
+            ],
+          },
+        ],
+      });
+      await asRole("authenticated", ownerA, async () => {
+        assert.equal(Number((await save(0, purchasePayload(true))).version), 1);
+        assert.equal(Number((await save(1, purchasePayload(false))).version), 2);
+        await rejectsSql(
+          () => save(2, purchasePayload("yes")),
+          "22023",
+          /INVALID_WORKSPACE_PAYLOAD/,
+        );
+      });
+      const rows = await database.query(
+        "select version::integer from public.calculation_workspaces",
+      );
+      assert.deepEqual(rows.rows, [{ version: 2 }]);
+    });
+
+    it("stores payment history and reversibility flags through the workspace RPC", async () => {
+      const withPayment = {
+        cards: [
+          {
+            id: "fictional-card",
+            name: "Escenario ficticio",
+            purchases: [{ id: "fictional-purchase", creditImpact: true }],
+            paymentHistory: [
+              {
+                id: "payment-1",
+                date: "2026-10-06",
+                amount: "50000",
+                availableApplied: true,
+                availableChange: "25000",
+              },
+            ],
+          },
+        ],
+      };
+      await asRole("authenticated", ownerA, async () => {
+        assert.equal(Number((await save(0, withPayment)).version), 1);
+        const invalid = structuredClone(withPayment);
+        invalid.cards[0].paymentHistory[0].amount = "0";
+        await rejectsSql(
+          () => save(1, invalid),
+          "22023",
+          /INVALID_WORKSPACE_PAYLOAD/,
+        );
+      });
+      const rows = await database.query(
+        "select payload from public.calculation_workspaces",
+      );
+      assert.deepEqual(rows.rows, [{ payload: withPayment }]);
+    });
+
     it("rejects forbidden cardNumber keys and malformed, nested or oversized payloads", async () => {
       const invalidPayloads = [
         null,
@@ -271,6 +356,7 @@ describe(
         { cards: [{ name: "Ficticio", cardNumber: "fictional-not-a-PAN" }] },
         { cards: [{ purchases: [{ cardNumber: "fictional-not-a-PAN" }] }] },
         { cards: [{ purchases: [{ expiry: "fictional" }] }] },
+        { cards: [{ purchases: [{ creditImpact: "yes" }] }] },
         { cards: [{ name: { nested: "invalid" } }] },
         { cards: [{ purchases: [{}] }] },
         { cards: [{ purchases: {} }] },
@@ -281,6 +367,39 @@ describe(
               purchases: [
                 { ...payload.cards[0], statementIncludesExtras: "yes" },
               ],
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: false,
+              previousBalanceIncludedCharges: "20000",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "invalid",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalance: "100000",
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "200000",
             },
           ],
         },

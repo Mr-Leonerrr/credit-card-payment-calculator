@@ -1,14 +1,26 @@
 export const fieldHelp = {
   "Cupo total de la tarjeta":
-    "Ingresa el límite de crédito aprobado por tu banco. Ejemplo: 5.000.000 para un cupo de $5.000.000. Para centavos usa la coma: 5.000.000,50. Puedes dejarlo vacío si no lo conoces.",
+    "Ingresa el límite de crédito aprobado por tu banco. Ejemplo: 5.000.000 para un cupo de $5.000.000. Para centavos usa la coma: 5.000.000,50. Al ingresarlo queda bloqueado; pulsa el icono de edición junto al campo para corregirlo.",
   "Cupo actual disponible":
-    "Ingresa el cupo disponible que muestra tu banco, no el saldo de la deuda. Ejemplo: 3.200.000 disponibles con un cupo total de 5.000.000 dan un pago total pendiente de $1.800.000. Usa 0 si no tienes cupo; no se actualiza automáticamente.",
+    "Ingresa el cupo disponible que muestra tu banco, no el saldo de la deuda. Ejemplo: 3.200.000 disponibles con un cupo total de 5.000.000 dan un pago total pendiente de $1.800.000. Se bloquea al ingresarlo; usa el icono de edición para corregirlo. Las compras nuevas y los pagos registrados lo ajustan automáticamente.",
   "Saldo anterior (sin cuotas registradas)":
-    "Ingresa solo el capital anterior que no está en la lista de compras, sin intereses. Ejemplo: si debes $800.000 y $300.000 ya están en compras registradas, ingresa 500000 para no duplicarlos.",
+    "Ingresa la deuda que no está desglosada en las compras. Si el saldo reportado ya contiene intereses o cargos facturados, activa el check para separarlos del capital. Ejemplo ficticio: $1.000.000 de saldo, de los cuales $20.000 son intereses ya facturados; ingresa 1.000.000 y separa 20.000.",
+  "¿Este saldo ya incluye intereses o cargos?":
+    "Activa esta opción si el saldo anterior que copiaste del extracto ya incluye intereses u otros cargos facturados. Ejemplo ficticio: $1.000.000 de saldo total con $20.000 de intereses ya incluidos. Ingresa los 20.000 en el campo que aparece; se restan del capital antes de estimar intereses nuevos.",
+  "Intereses/cargos ya incluidos en el saldo":
+    "Ingresa solo intereses u otros cargos que ya forman parte del saldo anterior. Ejemplo ficticio: $20.000. Ese importe se incluye en el próximo corte como cargo puntual y no recibe otro cálculo de intereses.",
   "Cargos adicionales de este corte":
     "Ingresa intereses ya facturados u otros cargos exclusivos de este corte que no estén en los cargos mensuales. Ejemplo: 15000 para un cargo de $15.000. No repitas los intereses que calcula la aplicación.",
   "Abonos para este corte":
-    "Ingresa los pagos que se descontarán del próximo corte. Ejemplo: 200000 si abonaste $200.000. No incluyas pagos ya reflejados en las cuotas pagadas o descontados del saldo anterior.",
+    "Ingresa el valor total que pagaste; incluye la parte que cubrió intereses, mora u otros cargos. Ejemplo: si pagaste $205.000, ingresa 205000: el importe completo se resta del pago del corte, no se le vuelve a calcular interés. No incluyas pagos ya reflejados en cuotas pagadas o en un saldo actualizado.",
+  "Abonos (total pagado, incluye intereses)":
+    "Ingresa el valor total que pagaste; incluye la parte que cubrió intereses, mora u otros cargos. Ejemplo ficticio: si pagaste $205.000, ingresa 205.000. El importe completo se resta del corte y no se le vuelve a calcular interés. No incluyas pagos ya reflejados en cuotas pagadas o en un saldo actualizado.",
+  "Otros abonos para el próximo corte":
+    "Ingresa solo abonos manuales que no hayas registrado en la pestaña Pagos. Los pagos guardados allí se suman automáticamente a los abonos del próximo corte.",
+  "Valor del pago":
+    "Ingresa el importe total pagado, incluidos intereses u otros cargos. Se sumará a los abonos del próximo corte y aumentará el cupo disponible registrado, sin exceder el cupo total.",
+  "Fecha del pago":
+    "Selecciona la fecha en que realizaste el pago. Se conserva en el historial de la tarjeta.",
   "Nombre de la tarjeta":
     "Ingresa un nombre para identificar esta tarjeta, sin su número ni datos bancarios. Ejemplo: Tarjeta principal.",
   Nombre:
@@ -41,6 +53,8 @@ export const fieldHelp = {
     "Ingresa cuántas cuotas completas ya pagaste en cortes anteriores. Ejemplo: 3 pagadas de 12 dejan 9 pendientes. No incluyas una cuota que aún no has pagado.",
   "Cuotas pendientes":
     "Ingresa cuántas cuotas quedan por pagar. Ejemplo: 9 pendientes de 12 actualizan las pagadas a 3. Usa 0 cuando la compra esté completamente pagada.",
+  "Esta compra tiene interés 0%":
+    "Actívalo cuando el comercio ofrezca una promoción sin intereses para este plazo. Ejemplo: una compra de $900.000 en 3 cuotas genera $300.000 de capital al mes y $0 de interés, aunque la tarjeta tenga una tasa regular.",
   "Tasa particular (% MV, opcional)":
     "Déjalo vacío para usar la tasa de la tarjeta. Ingresa una tasa mensual solo si esta compra tiene otra condición. Ejemplo: 1.5 para 1,5% mensual, o 0 para una promoción sin intereses; la condición de una cuota sin intereses prevalece.",
   "Valor compra del extracto":
