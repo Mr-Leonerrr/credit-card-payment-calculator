@@ -127,6 +127,28 @@ test("tarjetas antiguas o cupos inválidos quedan sin registrar, no en cero", ()
     "",
   );
 });
+test("tarjetas guardadas antiguas obtienen el desglose de intereses apagado", () => {
+  const card = normalizeCard({ previousBalance: "1000000" });
+  assert.equal(card.previousBalance, "1000000");
+  assert.equal(card.previousBalanceIncludesCharges, false);
+  assert.equal(card.previousBalanceIncludedCharges, "");
+});
+test("saldo anterior y cargos ya incluidos se conservan al recargar", () => {
+  const original = {
+    ...newCard("Principal"),
+    previousBalance: "1000000",
+    previousBalanceIncludesCharges: true,
+    previousBalanceIncludedCharges: "20000",
+  };
+  const restored = loadWorkspace(
+    storage({
+      [STORAGE_KEY]: JSON.stringify({ cards: [original], activeId: original.id }),
+    }),
+  ).data.cards[0];
+  assert.equal(restored.previousBalance, "1000000");
+  assert.equal(restored.previousBalanceIncludesCharges, true);
+  assert.equal(restored.previousBalanceIncludedCharges, "20000");
+});
 test("modo extracto conserva saldo, cuotas, fecha de proceso y tasa EA al recargar", () => {
   const original = {
     ...newCard(),

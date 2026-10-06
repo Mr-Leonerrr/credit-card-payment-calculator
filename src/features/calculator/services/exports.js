@@ -46,6 +46,16 @@ export function exportCSV(card, result) {
     ["Tasa mensual equivalente (%)", result.rate * 100],
     ["Día de corte", card.cutoffDay],
     ["Capital saldo anterior", result.previousBalance],
+    ["Saldo anterior informado", card.previousBalance],
+    [
+      "Saldo anterior incluye intereses/cargos",
+      card.previousBalanceIncludesCharges ? "Sí" : "No",
+    ],
+    [
+      "Intereses/cargos ya incluidos en saldo",
+      card.previousBalanceIncludedCharges,
+    ],
+    ["Abonos totales realizados", card.payments],
     ["Capital compras pendiente", result.purchaseBalance],
     ["Cupo total de la tarjeta", card.creditLimit ?? ""],
     ["Cupo actual disponible", card.availableCredit ?? ""],
@@ -127,6 +137,8 @@ export async function exportPDF(card, result) {
     import("jspdf"),
     import("jspdf-autotable"),
   ]);
+  const creditValue = (value) =>
+    value == null || value === "" ? "Sin registrar" : money(value);
   const doc = new jsPDF({ orientation: "landscape" });
   doc.setFontSize(19);
   doc.text(`Estado estimado - ${card.name}`, 14, 20);
@@ -142,25 +154,28 @@ export async function exportPDF(card, result) {
     37,
   );
   doc.text(
-    `Capital mínimo anterior: ${card.minimumPercent}% / piso ${money(card.minimumFloor)} | Una cuota sin intereses: ${card.interestFreeSingle ? "Sí" : "No"}`,
+    `Saldo anterior informado: ${creditValue(card.previousBalance)} | Ya incluye intereses/cargos: ${card.previousBalanceIncludesCharges ? creditValue(card.previousBalanceIncludedCharges) : "No"} | Abonos totales: ${money(card.payments)}`,
     14,
     45,
   );
-  const creditValue = (value) =>
-    value == null || value === "" ? "Sin registrar" : money(value);
   doc.text(
-    `Cupo total: ${creditValue(card.creditLimit)} | Cupo disponible informado: ${creditValue(card.availableCredit)} | Pago total pendiente estimad: ${creditValue(result.totalPending)}`,
+    `Capital mínimo anterior: ${card.minimumPercent}% / piso ${money(card.minimumFloor)} | Una cuota sin intereses: ${card.interestFreeSingle ? "Sí" : "No"}`,
     14,
     53,
   );
   doc.text(
-    "Pago total pendiente: cupo total menos cupo actual disponible. Sin sumar nuevamente compras, intereses, cargos ni abonos.",
+    `Cupo total: ${creditValue(card.creditLimit)} | Cupo disponible informado: ${creditValue(card.availableCredit)} | Pago total pendiente estimad: ${creditValue(result.totalPending)}`,
     14,
     61,
   );
-  doc.text(doc.splitTextToSize(disclaimer, 265), 14, 69);
+  doc.text(
+    "Pago total pendiente: cupo total menos cupo actual disponible. Sin sumar nuevamente compras, intereses, cargos ni abonos.",
+    14,
+    69,
+  );
+  doc.text(doc.splitTextToSize(disclaimer, 265), 14, 77);
   autoTable(doc, {
-    startY: 82,
+    startY: 90,
     head: [columns],
     body: result.rows.map((row) =>
       values(row).map((value, index) => (index === 0 ? value : money(value))),

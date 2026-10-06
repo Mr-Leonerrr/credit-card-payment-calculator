@@ -1,5 +1,6 @@
 import { CreditCard, Wallet, Plus } from "lucide-react";
 import { Field } from "../../../components/ui/Field.jsx";
+import { FieldLabel } from "../../../components/ui/FieldLabel.jsx";
 import { Metric } from "../../../components/ui/Metric.jsx";
 import { SectionHeading } from "../../../components/ui/SectionHeading.jsx";
 import { PurchaseFields } from "../../purchases/components/PurchaseFields.jsx";
@@ -100,6 +101,46 @@ export function Overview({
                 onChange={fieldChange("previousBalance")}
                 prefix="$"
               />
+              <div className="statement-extra-option">
+                <div>
+                  <FieldLabel
+                    label="¿Este saldo ya incluye intereses o cargos?"
+                    inputId="previous-balance-includes-charges"
+                  />
+                  <small>
+                    Sepáralos del capital para no volver a calcularles interés.
+                  </small>
+                </div>
+                <input
+                  id="previous-balance-includes-charges"
+                  type="checkbox"
+                  role="switch"
+                  checked={card.previousBalanceIncludesCharges === true}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    updateCard({
+                      previousBalanceIncludesCharges: checked,
+                      previousBalanceIncludedCharges: checked
+                        ? card.previousBalanceIncludedCharges
+                        : "",
+                    });
+                  }}
+                />
+              </div>
+              {card.previousBalanceIncludesCharges && (
+                <Field
+                  label="Intereses/cargos ya incluidos en el saldo"
+                  type="number"
+                  min="0"
+                  max={card.previousBalance || undefined}
+                  step="0.01"
+                  value={card.previousBalanceIncludedCharges}
+                  onChange={fieldChange("previousBalanceIncludedCharges")}
+                  prefix="$"
+                  placeholder="Importe ya facturado"
+                  required
+                />
+              )}
               <Field
                 label="Cargos adicionales de este corte"
                 type="number"
@@ -110,7 +151,7 @@ export function Overview({
                 prefix="$"
               />
               <Field
-                label="Abonos para este corte"
+                label="Abonos (total pagado, incluye intereses)"
                 type="number"
                 min="0"
                 step="0.01"

@@ -149,6 +149,22 @@ test("older cloud snapshots gain empty quota-extra defaults without losing legac
   assert.equal(purchase.statementIncludesExtras, false);
   assert.equal(purchase.statementExtraAmount, "");
 });
+test("older cloud cards gain defaults for previous-balance charge breakdown", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].previousBalance = "750000";
+  const payload = JSON.parse(JSON.stringify(serializeWorkspace(workspace)));
+  delete payload.cards[0].previousBalanceIncludesCharges;
+  delete payload.cards[0].previousBalanceIncludedCharges;
+  const hydrated = hydratePayload(
+    validateRow(
+      { user_id: "owner", schema_version: 1, version: 2, payload },
+      "owner",
+    ).payload,
+  ).cards[0];
+  assert.equal(hydrated.previousBalance, "750000");
+  assert.equal(hydrated.previousBalanceIncludesCharges, false);
+  assert.equal(hydrated.previousBalanceIncludedCharges, "");
+});
 
 test("statement payment extras round-trip and reject unchecked or incomplete charges", () => {
   const workspace = emptyWorkspace();

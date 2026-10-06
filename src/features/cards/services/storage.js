@@ -21,6 +21,8 @@ export function newCard(name = "Mi tarjeta") {
     cutoffDay: "20",
     referenceDate: today(),
     previousBalance: "",
+    previousBalanceIncludesCharges: false,
+    previousBalanceIncludedCharges: "",
     minimumPercent: "5",
     minimumFloor: "0",
     recurringCharges: "",
@@ -49,6 +51,7 @@ export function normalizeCard(raw) {
   for (const field of [
     "rate",
     "previousBalance",
+    "previousBalanceIncludedCharges",
     "minimumPercent",
     "minimumFloor",
     "recurringCharges",
@@ -58,6 +61,10 @@ export function normalizeCard(raw) {
     "availableCredit",
   ]) {
     card[field] = numeric(raw[field] ?? defaults[field], defaults[field]);
+  }
+  card.previousBalanceIncludesCharges = raw.previousBalanceIncludesCharges === true;
+  if (!card.previousBalanceIncludesCharges) {
+    card.previousBalanceIncludedCharges = "";
   }
   card.purchases = (Array.isArray(raw.purchases) ? raw.purchases : [])
     .filter((purchase) => purchase && Number(purchase.amount) > 0)

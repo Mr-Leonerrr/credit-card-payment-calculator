@@ -4,11 +4,17 @@ export const fieldHelp = {
   "Cupo actual disponible":
     "Ingresa el cupo disponible que muestra tu banco, no el saldo de la deuda. Ejemplo: 3.200.000 disponibles con un cupo total de 5.000.000 dan un pago total pendiente de $1.800.000. Usa 0 si no tienes cupo; no se actualiza automáticamente.",
   "Saldo anterior (sin cuotas registradas)":
-    "Ingresa solo el capital anterior que no está en la lista de compras, sin intereses. Ejemplo: si debes $800.000 y $300.000 ya están en compras registradas, ingresa 500000 para no duplicarlos.",
+    "Ingresa la deuda que no está desglosada en las compras. Si el saldo reportado ya contiene intereses o cargos facturados, activa el check para separarlos del capital. Ejemplo ficticio: $1.000.000 de saldo, de los cuales $20.000 son intereses ya facturados; ingresa 1.000.000 y separa 20.000.",
+  "¿Este saldo ya incluye intereses o cargos?":
+    "Activa esta opción si el saldo anterior que copiaste del extracto ya incluye intereses u otros cargos facturados. Ejemplo ficticio: $1.000.000 de saldo total con $20.000 de intereses ya incluidos. Ingresa los 20.000 en el campo que aparece; se restan del capital antes de estimar intereses nuevos.",
+  "Intereses/cargos ya incluidos en el saldo":
+    "Ingresa solo intereses u otros cargos que ya forman parte del saldo anterior. Ejemplo ficticio: $20.000. Ese importe se incluye en el próximo corte como cargo puntual y no recibe otro cálculo de intereses.",
   "Cargos adicionales de este corte":
     "Ingresa intereses ya facturados u otros cargos exclusivos de este corte que no estén en los cargos mensuales. Ejemplo: 15000 para un cargo de $15.000. No repitas los intereses que calcula la aplicación.",
   "Abonos para este corte":
-    "Ingresa los pagos que se descontarán del próximo corte. Ejemplo: 200000 si abonaste $200.000. No incluyas pagos ya reflejados en las cuotas pagadas o descontados del saldo anterior.",
+    "Ingresa el valor total que pagaste; incluye la parte que cubrió intereses, mora u otros cargos. Ejemplo: si pagaste $205.000, ingresa 205000: el importe completo se resta del pago del corte, no se le vuelve a calcular interés. No incluyas pagos ya reflejados en cuotas pagadas o en un saldo actualizado.",
+  "Abonos (total pagado, incluye intereses)":
+    "Ingresa el valor total que pagaste; incluye la parte que cubrió intereses, mora u otros cargos. Ejemplo ficticio: si pagaste $205.000, ingresa 205.000. El importe completo se resta del corte y no se le vuelve a calcular interés. No incluyas pagos ya reflejados en cuotas pagadas o en un saldo actualizado.",
   "Nombre de la tarjeta":
     "Ingresa un nombre para identificar esta tarjeta, sin su número ni datos bancarios. Ejemplo: Tarjeta principal.",
   Nombre:

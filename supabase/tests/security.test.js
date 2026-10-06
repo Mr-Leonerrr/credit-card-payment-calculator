@@ -6,6 +6,8 @@ import { PGlite } from "@electric-sql/pglite";
 const migrationUrls = [
   new URL("../migrations/001_calculation_workspaces.sql", import.meta.url),
   new URL("../migrations/002_statement_payment_breakdown.sql", import.meta.url),
+  new URL("../migrations/003_previous_balance_charges.sql", import.meta.url),
+  new URL("../migrations/004_previous_balance_interest_breakdown.sql", import.meta.url),
 ];
 const ownerA = "00000000-0000-4000-8000-000000000001";
 const ownerB = "00000000-0000-4000-8000-000000000002";
@@ -281,6 +283,39 @@ describe(
               purchases: [
                 { ...payload.cards[0], statementIncludesExtras: "yes" },
               ],
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: false,
+              previousBalanceIncludedCharges: "20000",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "invalid",
+            },
+          ],
+        },
+        {
+          cards: [
+            {
+              previousBalance: "100000",
+              previousBalanceIncludesCharges: true,
+              previousBalanceIncludedCharges: "200000",
             },
           ],
         },

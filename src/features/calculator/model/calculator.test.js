@@ -143,3 +143,102 @@ test("piso de capital no supera la deuda y tasas particulares se preservan", () 
   assert.equal(result.rows[0].previousCapital, 1000);
   assert.equal(result.rows[0].interest, 20);
 });
+test("saldo anterior total con intereses incluidos solo genera interés nuevo sobre capital", () => {
+  const result = project(
+    card({
+      previousBalance: 1000000,
+      minimumPercent: 5,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 20000,
+    }),
+    3,
+  );
+  assert.equal(result.previousBalance, 980000);
+  assert.equal(result.rows[0].interest, 19600);
+  assert.equal(result.rows[0].charges, 20000);
+  assert.equal(result.rows[0].capital, 49000);
+  assert.equal(result.rows[0].minimum, 88600);
+  assert.equal(result.rows[0].totalPayment, 1019600);
+  assert.equal(result.rows[1].charges, 0);
+  assert.equal(result.rows[1].interest, 18620);
+});
+test("saldo anterior mantiene su comportamiento de capital si el check queda apagado", () => {
+  const result = project(
+    card({ previousBalance: 1000000, previousBalanceIncludedCharges: "" }),
+    2,
+  );
+  assert.equal(result.previousBalance, 1000000);
+  assert.equal(result.rows[0].interest, 20000);
+  assert.equal(result.rows[0].charges, 0);
+});
+test("el desglose incluido no puede superar el saldo anterior", () => {
+  const result = project(
+    card({
+      previousBalance: 1000000,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 1500000,
+    }),
+    1,
+  );
+  assert.equal(result.previousBalance, 0);
+  assert.equal(result.rows[0].charges, 1000000);
+  assert.equal(result.rows[0].interest, 0);
+});
+test("abonos se restan como importe total pagado y el exceso reduce capital", () => {
+  const result = project(
+    card({
+      previousBalance: 1000000,
+      minimumPercent: 5,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 20000,
+      payments: 205000,
+    }),
+    2,
+  );
+  assert.equal(result.rows[0].payment, 205000);
+  assert.equal(result.rows[0].minimum, 0);
+  assert.equal(result.rows[0].charges, 20000);
+  assert.equal(result.rows[0].totalPayment, 814600);
+});
+test("saldo anterior con cargos incluidos calcula intereses nuevos solo sobre capital", () => {
+  const result = project(
+    card({
+      previousBalance: 1000000,
+      minimumPercent: 5,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 20000,
+    }),
+    2,
+  );
+  assert.equal(result.previousBalance, 980000);
+  assert.equal(result.rows[0].interest, 19600);
+  assert.equal(result.rows[0].charges, 20000);
+  assert.equal(result.rows[0].capital, 49000);
+  assert.equal(result.rows[0].totalPayment, 1019600);
+  assert.equal(result.rows[1].charges, 0);
+  assert.equal(result.rows[1].interest, 18620);
+});
+test("un abono con interés incluido se resta completo del mínimo, sin recalcular interés", () => {
+  const withCharges = project(
+    card({
+      previousBalance: 1000000,
+      minimumPercent: 5,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 20000,
+      payments: 50000,
+    }),
+    2,
+  );
+  const withoutCharges = project(
+    card({
+      previousBalance: 1000000,
+      minimumPercent: 5,
+      previousBalanceIncludesCharges: true,
+      previousBalanceIncludedCharges: 20000,
+    }),
+    2,
+  );
+  assert.equal(withCharges.rows[0].payment, 50000);
+  assert.equal(withCharges.rows[0].interest, withoutCharges.rows[0].interest);
+  assert.equal(withCharges.rows[0].minimum, withoutCharges.rows[0].minimum - 50000);
+});

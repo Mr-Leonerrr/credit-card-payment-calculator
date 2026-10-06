@@ -12,6 +12,8 @@ export const CARD_KEYS = [
   "cutoffDay",
   "referenceDate",
   "previousBalance",
+  "previousBalanceIncludesCharges",
+  "previousBalanceIncludedCharges",
   "minimumPercent",
   "minimumFloor",
   "recurringCharges",
@@ -112,6 +114,21 @@ export function validatePayload(payload) {
     numeric(card.cutoffDay, { minimum: 1, maximum: 31, integer: true });
     numeric(card.minimumPercent, { maximum: 100 });
     numeric(card.minimumFloor);
+    requireValid(typeof card.previousBalanceIncludesCharges === "boolean");
+    numeric(card.previousBalanceIncludedCharges, { optional: true });
+    requireValid(
+      card.previousBalanceIncludesCharges ||
+        card.previousBalanceIncludedCharges === "",
+    );
+    requireValid(
+      !card.previousBalanceIncludesCharges ||
+        card.previousBalanceIncludedCharges !== "",
+    );
+    requireValid(
+      !card.previousBalanceIncludesCharges ||
+        Number(card.previousBalanceIncludedCharges) <=
+          Number(card.previousBalance),
+    );
     date(card.referenceDate);
     requireValid(typeof card.interestFreeSingle === "boolean");
     for (const key of [
@@ -232,6 +249,8 @@ export function validateRow(row, userId) {
   const payload = {
     ...row.payload,
     cards: row.payload.cards.map((card) => ({
+      previousBalanceIncludesCharges: false,
+      previousBalanceIncludedCharges: "",
       ...card,
       purchases: Array.isArray(card?.purchases)
         ? card.purchases.map((purchase) => ({
