@@ -186,12 +186,18 @@ export function createWorkspaceController({
     const operation = Promise.resolve().then(async () => {
       if (savePromise) await savePromise;
       if (!current(token) || !isOnline()) return false;
-      if (!discard && ["error", "conflict"].includes(state.status))
+      if (
+        !discard &&
+        ["error", "conflict"].includes(state.status)
+      )
         return false;
       try {
         const result = await repository.load(userId);
         if (!current(token)) return false;
-        if (!discard && ["error", "conflict"].includes(state.status))
+        if (
+          !discard &&
+          ["error", "conflict"].includes(state.status)
+        )
           return false;
         const row = result === null ? null : validateRow(result, userId);
         const remoteVersion = row?.version ?? 0;
@@ -200,9 +206,23 @@ export function createWorkspaceController({
           !discard &&
           !state.dirty &&
           remoteVersion === version &&
-          state.status === "synced"
+          ["synced", "remote-update"].includes(state.status)
         )
           return true;
+        if (
+          background &&
+          !discard &&
+          !state.dirty &&
+          version !== null &&
+          remoteVersion !== version
+        ) {
+          publish({
+            status: "remote-update",
+            error: "",
+            importAvailable: guestAvailable(),
+          });
+          return true;
+        }
         if (state.dirty && !discard) {
           if (remoteVersion !== version) {
             fail(new Error("SYNC_CONFLICT"));
@@ -397,7 +417,7 @@ export function createWorkspaceController({
     offline() {
       if (!current()) return;
       publish({
-        status: ["error", "conflict"].includes(state.status)
+        status: ["error", "conflict", "remote-update"].includes(state.status)
           ? state.status
           : "offline",
       });

@@ -13,8 +13,10 @@ function setup() {
   let reads = () => Promise.resolve(row);
   let writes = 0;
   let failure = false;
+  let online = true;
   const controller = createWorkspaceController({
     userId: "demo",
+    isOnline: () => online,
     repository: {
       load: () => reads(),
       save: async (_id, payload, version) => {
@@ -33,6 +35,12 @@ function setup() {
     },
     read: (value) => {
       reads = value;
+    },
+    setRemote: (value) => {
+      row = value;
+    },
+    setOnline: (value) => {
+      online = value;
     },
   };
 }
@@ -112,6 +120,52 @@ test("unchanged background refresh keeps the workspace object and status stable"
   await state.controller.refresh();
   assert.equal(state.controller.getSnapshot().workspace, workspace);
   assert.deepEqual(statuses, []);
+});
+
+test("new remote version shows an update state and preserves the visible workspace until confirmed", async () => {
+  const state = setup();
+  await state.controller.start();
+  const visible = state.controller.getSnapshot().workspace;
+  state.setRemote({
+    user_id: "demo",
+    schema_version: 1,
+    version: 2,
+    payload: {
+      cards: visible.cards.map((card) => ({ ...card, name: "Actualizado desde el otro dispositivo" })),
+    },
+  });
+  await state.controller.refresh();
+  assert.equal(state.controller.getSnapshot().status, "remote-update");
+  assert.equal(state.controller.getSnapshot().canEdit, false);
+  assert.equal(state.controller.getSnapshot().workspace, visible);
+  assert.equal(state.controller.getSnapshot().workspace.cards[0].name, "Mi tarjeta");
+  assert.equal(state.writes(), 0);
+
+  assert.equal(await state.controller.reload(), true);
+  assert.equal(state.controller.getSnapshot().status, "synced");
+  assert.equal(state.controller.getSnapshot().canEdit, true);
+  assert.equal(state.controller.getSnapshot().workspace.cards[0].name, "Actualizado desde el otro dispositivo");
+});
+
+test("remote update remains pending through offline state and is applied only after reconnect confirmation", async () => {
+  const state = setup();
+  await state.controller.start();
+  state.setRemote({
+    user_id: "demo",
+    schema_version: 1,
+    version: 2,
+    payload: {
+      cards: state.controller.getSnapshot().workspace.cards.map((card) => ({ ...card, name: "Remote" })),
+    },
+  });
+  await state.controller.refresh();
+  state.setOnline(false);
+  state.controller.offline();
+  assert.equal(state.controller.getSnapshot().status, "remote-update");
+  assert.equal(state.controller.getSnapshot().canEdit, false);
+  state.setOnline(true);
+  await state.controller.reload();
+  assert.equal(state.controller.getSnapshot().workspace.cards[0].name, "Remote");
 });
 
 test("discard is refused while an explicit save is in flight", async () => {
