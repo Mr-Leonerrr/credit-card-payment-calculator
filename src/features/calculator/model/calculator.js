@@ -126,8 +126,8 @@ export function project(card, months = 6) {
     const details = active.map((purchase) => {
       const interest =
         purchase.entryMode !== "statement" &&
-        purchase.installments === 1 &&
-        card.interestFreeSingle
+        (purchase.interestFree === true ||
+          (purchase.installments === 1 && card.interestFreeSingle))
           ? 0
           : purchase.balance * purchaseMonthlyRate(purchase, rate);
       const includedExtra = purchase.statementIncludesExtras

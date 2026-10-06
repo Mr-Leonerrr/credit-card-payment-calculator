@@ -90,6 +90,7 @@ export function exportCSV(card, result) {
       "Cuotas pendientes",
       "Capital pendiente",
       "Tasa particular (%)",
+      "Compra sin intereses (0%)",
       "Tipo de tasa",
       "Origen",
       "Fecha de proceso",
@@ -110,6 +111,7 @@ export function exportCSV(card, result) {
         : Number(purchase.installments) - Number(purchase.paidInstallments),
       purchaseBalance(purchase).toFixed(2),
       purchase.rateOverride,
+      purchase.interestFree ? "Sí" : "No",
       purchase.rateOverrideType === "annual" ? "EA" : "MV",
       purchase.entryMode === "statement" ? "Extracto" : "Compra",
       purchase.processDate || "",
@@ -195,6 +197,7 @@ export async function exportPDF(card, result) {
         "Pendientes",
         "Capital pendiente",
         "Tasa particular",
+        "Sin interés 0%",
       ],
     ],
     body: card.purchases.map((purchase) => [
@@ -209,6 +212,7 @@ export async function exportPDF(card, result) {
         ? purchase.statementRemaining
         : Number(purchase.installments) - Number(purchase.paidInstallments),
       money(purchaseBalance(purchase)),
+      purchase.interestFree ? "Sí" : "No",
       purchase.rateOverride === ""
         ? "Tarjeta"
         : `${purchase.rateOverride}% ${purchase.rateOverrideType === "annual" ? "EA" : "MV"}`,

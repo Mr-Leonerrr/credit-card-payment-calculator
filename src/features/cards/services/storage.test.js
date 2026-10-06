@@ -133,6 +133,16 @@ test("tarjetas guardadas antiguas obtienen el desglose de intereses apagado", ()
   assert.equal(card.previousBalanceIncludesCharges, false);
   assert.equal(card.previousBalanceIncludedCharges, "");
 });
+test("las compras promocionales al 0% se conservan y las antiguas mantienen su tasa", () => {
+  const restored = normalizeCard({
+    purchases: [
+      { id: "promo", amount: "300000", interestFree: true },
+      { id: "normal", amount: "300000" },
+    ],
+  });
+  assert.equal(restored.purchases[0].interestFree, true);
+  assert.equal(restored.purchases[1].interestFree, false);
+});
 test("saldo anterior y cargos ya incluidos se conservan al recargar", () => {
   const original = {
     ...newCard("Principal"),

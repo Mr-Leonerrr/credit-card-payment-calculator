@@ -104,6 +104,20 @@ test("tasa EA se convierte a mensual y una cuota puede generar intereses", () =>
   );
   assert.equal(result.rows[0].interest, 2000);
 });
+test("una compra marcada al 0% no genera interés aunque otras compras sí", () => {
+  const result = project(
+    card({
+      purchases: [
+        purchase({ id: "promo", interestFree: true }),
+        purchase({ id: "regular" }),
+      ],
+    }),
+    1,
+  );
+  assert.equal(result.rows[0].details.find((item) => item.id === "promo").interest, 0);
+  assert.equal(result.rows[0].details.find((item) => item.id === "regular").interest, 24000);
+  assert.equal(result.rows[0].interest, 24000);
+});
 test("cargos recurrentes y puntuales son independientes del capital", () => {
   const result = project(
     card({ recurringCharges: 10000, extraCharges: 5000 }),

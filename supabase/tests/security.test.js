@@ -8,6 +8,7 @@ const migrationUrls = [
   new URL("../migrations/002_statement_payment_breakdown.sql", import.meta.url),
   new URL("../migrations/003_previous_balance_charges.sql", import.meta.url),
   new URL("../migrations/004_previous_balance_interest_breakdown.sql", import.meta.url),
+  new URL("../migrations/005_purchase_interest_free.sql", import.meta.url),
 ];
 const ownerA = "00000000-0000-4000-8000-000000000001";
 const ownerB = "00000000-0000-4000-8000-000000000002";
@@ -258,6 +259,52 @@ describe(
           await rejectsSql(() => save(1), "42501", /permission denied/);
         });
       }
+    });
+
+    it("accepts the per-purchase 0% flag and rejects non-boolean values", async () => {
+      const purchasePayload = (interestFree) => ({
+        cards: [
+          {
+            id: "fictional-card",
+            name: "Escenario ficticio",
+            purchases: [
+              {
+                id: "fictional-purchase",
+                description: "Compra promocional",
+                amount: "900000",
+                installments: "3",
+                paidInstallments: "0",
+                date: "2026-10-01",
+                rateOverride: "",
+                rateOverrideType: "monthly",
+                entryMode: "purchase",
+                processDate: "",
+                statementBalance: "",
+                statementRemaining: "3",
+                statementCapital: "",
+                statementNextDate: "",
+                statementPayment: "",
+                statementIncludesExtras: false,
+                statementExtraAmount: "",
+                interestFree,
+              },
+            ],
+          },
+        ],
+      });
+      await asRole("authenticated", ownerA, async () => {
+        assert.equal(Number((await save(0, purchasePayload(true))).version), 1);
+        assert.equal(Number((await save(1, purchasePayload(false))).version), 2);
+        await rejectsSql(
+          () => save(2, purchasePayload("yes")),
+          "22023",
+          /INVALID_WORKSPACE_PAYLOAD/,
+        );
+      });
+      const rows = await database.query(
+        "select version::integer from public.calculation_workspaces",
+      );
+      assert.deepEqual(rows.rows, [{ version: 2 }]);
     });
 
     it("rejects forbidden cardNumber keys and malformed, nested or oversized payloads", async () => {

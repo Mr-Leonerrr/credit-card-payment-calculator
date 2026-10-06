@@ -85,6 +85,7 @@ export function normalizeCard(raw) {
             : numeric(purchase.rateOverride),
         rateOverrideType:
           purchase.rateOverrideType === "annual" ? "annual" : "monthly",
+        interestFree: purchase.interestFree === true,
         entryMode:
           purchase.entryMode === "statement" ? "statement" : "purchase",
         processDate: validDate(purchase.processDate)

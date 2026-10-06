@@ -32,6 +32,7 @@ export const PURCHASE_KEYS = [
   "paidInstallments",
   "date",
   "rateOverride",
+  "interestFree",
   "rateOverrideType",
   "entryMode",
   "processDate",
@@ -163,6 +164,7 @@ export function validatePayload(payload) {
       });
       date(purchase.date);
       numeric(purchase.rateOverride, { optional: true });
+      requireValid(typeof purchase.interestFree === "boolean");
       rateType(purchase.rateOverrideType);
       date(purchase.processDate, true);
       numeric(purchase.statementBalance, {
@@ -256,6 +258,7 @@ export function validateRow(row, userId) {
         ? card.purchases.map((purchase) => ({
             ...purchase,
             statementPayment: purchase.statementPayment ?? "",
+              interestFree: purchase.interestFree ?? false,
             statementIncludesExtras: purchase.statementIncludesExtras ?? false,
             statementExtraAmount: purchase.statementExtraAmount ?? "",
           }))
@@ -287,7 +290,9 @@ export function readGuestPayload(storage) {
   const saved = storage?.getItem(STORAGE_KEY);
   if (!saved) return null;
   const raw = JSON.parse(saved);
-  const payload = serializeWorkspace({ cards: raw.cards });
+  const payload = serializeWorkspace({
+    cards: Array.isArray(raw.cards) ? raw.cards.map(normalizeCard) : raw.cards,
+  });
   return hasRealData(payload) ? payload : null;
 }
 

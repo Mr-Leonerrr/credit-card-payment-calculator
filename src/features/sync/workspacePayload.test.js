@@ -84,6 +84,27 @@ test("statement snapshots survive hydration without normalization filtering", ()
   );
 });
 
+test("purchase 0% promotion survives workspace round trips and requires a boolean", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    ...blankPurchase(),
+    amount: "900000",
+    installments: "3",
+    interestFree: true,
+  });
+  assert.equal(
+    hydratePayload(serializeWorkspace(workspace)).cards[0].purchases[0]
+      .interestFree,
+    true,
+  );
+  const invalid = structuredClone(workspace);
+  invalid.cards[0].purchases[0].interestFree = "yes";
+  assert.throws(
+    () => serializeWorkspace(invalid),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+});
+
 test("statement quota breakdown survives sync validation and rejects incomplete recargos", () => {
   const workspace = emptyWorkspace();
   workspace.cards[0].purchases.push({
@@ -133,6 +154,7 @@ test("older cloud snapshots gain empty quota-extra defaults without losing legac
         JSON.stringify(serializeWorkspace(legacy), (key, value) =>
           [
             "statementPayment",
+            "interestFree",
             "statementIncludesExtras",
             "statementExtraAmount",
           ].includes(key)
@@ -148,6 +170,26 @@ test("older cloud snapshots gain empty quota-extra defaults without losing legac
   assert.equal(purchase.statementPayment, "");
   assert.equal(purchase.statementIncludesExtras, false);
   assert.equal(purchase.statementExtraAmount, "");
+  assert.equal(purchase.interestFree, false);
+});
+
+test("older guest purchases normalize before an explicit account import", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    id: "old-purchase",
+    description: "Compra anterior",
+    amount: "900000",
+    installments: "3",
+    paidInstallments: "0",
+    date: "2026-10-01",
+  });
+  const storage = {
+    getItem: (key) =>
+      key === STORAGE_KEY
+        ? JSON.stringify({ cards: workspace.cards })
+        : null,
+  };
+  assert.equal(readGuestPayload(storage).cards[0].purchases[0].interestFree, false);
 });
 test("older cloud cards gain defaults for previous-balance charge breakdown", () => {
   const workspace = emptyWorkspace();
