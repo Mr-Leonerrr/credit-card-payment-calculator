@@ -1,13 +1,21 @@
 import { CreditCard, Plus, ShieldCheck } from "lucide-react";
 import { IconButton } from "../../../components/ui/IconButton.jsx";
 
-export function CardSidebar({ workspace, card, selectCard, setCreatingCard }) {
+export function CardSidebar({
+  workspace,
+  card,
+  selectCard,
+  setCreatingCard,
+  canEdit = true,
+  cloudAccount = false,
+}) {
   return (
     <aside className="sidebar">
       <div className="sidebar-heading">
         <h2>Mis tarjetas</h2>
         <IconButton
           label="Agregar tarjeta"
+          disabled={!canEdit}
           onClick={() => setCreatingCard(true)}
         >
           <Plus size={18} />
@@ -33,7 +41,9 @@ export function CardSidebar({ workspace, card, selectCard, setCreatingCard }) {
       <div className="sidebar-footer">
         <ShieldCheck size={17} />
         <p>
-          Guardado en este navegador.
+          {cloudAccount
+            ? "Cálculos privados en tu cuenta."
+            : "Guardado en este navegador."}
           <br />
           Sin números de tarjeta ni datos bancarios.
         </p>

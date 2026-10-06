@@ -16,6 +16,7 @@ import { Overview } from "../features/calculator/components/Overview.jsx";
 import { Projection } from "../features/calculator/components/Projection.jsx";
 import { WorkspaceDialogs } from "./WorkspaceDialogs.jsx";
 import { useWorkspace } from "./useWorkspace.js";
+import { SyncStatus } from "../features/sync/SyncStatus.jsx";
 
 export function App() {
   const controller = useWorkspace();
@@ -39,13 +40,21 @@ export function App() {
   } = controller;
   return (
     <div className="app-shell">
-      <Header workspace={workspace} setWorkspace={setWorkspace} />
+      <Header
+        workspace={workspace}
+        setWorkspace={setWorkspace}
+        auth={controller.auth}
+        configured={controller.configured}
+        requestLogout={controller.requestLogout}
+      />
       <div className="workspace">
         <CardSidebar
           workspace={workspace}
           card={card}
           selectCard={selectCard}
           setCreatingCard={setCreatingCard}
+          canEdit={controller.canEdit}
+          cloudAccount={Boolean(controller.auth.user)}
         />
         <main className="main-content">
           <div className="page-heading">
@@ -72,6 +81,7 @@ export function App() {
               </button>
             </div>
           </div>
+          <SyncStatus {...controller} />
           {(notice || saveError) && (
             <div className={`notice ${saveError ? "error" : ""}`} role="status">
               <span>{saveError || notice}</span>
@@ -125,7 +135,14 @@ export function App() {
               </button>
             ))}
           </nav>
-          {tab === "overview" && <Overview {...controller} />}
+          {tab === "overview" && (
+            <fieldset
+              className="workspace-edit-boundary"
+              disabled={!controller.canEdit}
+            >
+              <Overview {...controller} />
+            </fieldset>
+          )}
           {tab === "projection" && (
             <Projection
               workspace={workspace}
@@ -133,14 +150,23 @@ export function App() {
               calculation={calculation}
             />
           )}
-          {tab === "settings" && <CardSettings {...controller} />}
+          {tab === "settings" && (
+            <fieldset
+              className="workspace-edit-boundary"
+              disabled={!controller.canEdit}
+            >
+              <CardSettings {...controller} />
+            </fieldset>
+          )}
           <footer className="app-footer">
             Estimación orientativa, no un extracto bancario. Los intereses, el
             pago mínimo y la fecha de contabilización dependen de tu entidad.
           </footer>
         </main>
       </div>
-      <WorkspaceDialogs {...controller} />
+      {controller.canEdit || controller.confirmation ? (
+        <WorkspaceDialogs {...controller} />
+      ) : null}
     </div>
   );
 }

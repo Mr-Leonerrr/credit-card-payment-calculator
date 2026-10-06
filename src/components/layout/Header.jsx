@@ -1,7 +1,14 @@
 import { CreditCard, ShieldCheck, Moon, Sun } from "lucide-react";
 import { IconButton } from "../ui/IconButton.jsx";
+import { AccountControls } from "../../features/auth/components/AccountControls.jsx";
 
-export function Header({ workspace, setWorkspace }) {
+export function Header({
+  workspace,
+  setWorkspace,
+  auth,
+  configured,
+  requestLogout,
+}) {
   return (
     <header className="topbar">
       <a className="brand" href="#">
@@ -14,8 +21,16 @@ export function Header({ workspace, setWorkspace }) {
       </a>
       <div className="topbar-actions">
         <span className="local-badge">
-          <ShieldCheck size={15} /> Datos locales
+          <ShieldCheck size={15} />{" "}
+          {auth?.user ? "Cuenta privada" : "Datos locales"}
         </span>
+        {auth && (
+          <AccountControls
+            auth={auth}
+            configured={configured}
+            requestLogout={requestLogout}
+          />
+        )}
         <IconButton
           label={
             workspace.theme === "light"

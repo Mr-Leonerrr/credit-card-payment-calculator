@@ -10,13 +10,30 @@ import {
   exportPDF,
 } from "../features/calculator/services/exports.js";
 import { blankPurchase } from "../features/purchases/model/purchase.js";
+import { useAuth } from "../features/auth/hooks/useAuth.js";
+import {
+  useCloudWorkspace,
+  clearAccountCache,
+} from "../features/sync/index.js";
+import { supabase } from "../lib/supabase.js";
 
 export function useWorkspace() {
   const [loaded] = useState(() => loadWorkspace());
-  const [workspace, setWorkspace] = useState(loaded.data);
+  const [guestWorkspace, setGuestWorkspace] = useState(loaded.data);
+  const [storageBlocked, setStorageBlocked] = useState(Boolean(loaded.blocked));
+  const auth = useAuth();
+  const cloud = useCloudWorkspace(auth.user);
+  const workspace = auth.user ? cloud.workspace : guestWorkspace;
+  const canEdit =
+    !auth.loading && (auth.user ? cloud.canEdit : !storageBlocked);
+  const setWorkspace = (update) => {
+    if (auth.user) return cloud.setWorkspace(update);
+    if (!canEdit) return false;
+    setGuestWorkspace(update);
+    return true;
+  };
   const [notice, setNotice] = useState(loaded.notice);
   const [saveError, setSaveError] = useState("");
-  const [storageBlocked, setStorageBlocked] = useState(Boolean(loaded.blocked));
   const [tab, setTab] = useState("overview");
   const [draft, setDraft] = useState(blankPurchase);
   const [editing, setEditing] = useState(null);
@@ -31,16 +48,28 @@ export function useWorkspace() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = workspace.theme;
-    if (storageBlocked) return;
+  }, [workspace.theme]);
+
+  useEffect(() => {
+    if (storageBlocked || auth.user || auth.loading) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(guestWorkspace));
       setSaveError("");
     } catch {
       setSaveError(
         "No se pudo guardar. El almacenamiento está lleno o deshabilitado; exporta tus datos antes de cerrar.",
       );
     }
-  }, [workspace, storageBlocked]);
+  }, [guestWorkspace, storageBlocked, auth.user, auth.loading]);
+
+  useEffect(() => {
+    setEditing(null);
+    setCreatingCard(false);
+    setConfirmation(null);
+    setDraft(blankPurchase());
+    setNotice("");
+    setSaveError("");
+  }, [auth.user?.id]);
 
   const updateCard = (changes) =>
     setWorkspace((previous) => ({
@@ -57,6 +86,7 @@ export function useWorkspace() {
   };
   const addPurchase = (event) => {
     event.preventDefault();
+    if (!canEdit) return;
     updateCard({
       purchases: [
         ...card.purchases,
@@ -73,6 +103,7 @@ export function useWorkspace() {
   };
   const savePurchase = (event) => {
     event.preventDefault();
+    if (!canEdit) return;
     updateCard({
       purchases: card.purchases.map((purchase) =>
         purchase.id === editing.id
@@ -85,6 +116,7 @@ export function useWorkspace() {
   };
   const addCard = (event) => {
     event.preventDefault();
+    if (!canEdit) return;
     const added = newCard(cardName.trim() || "Mi tarjeta");
     setWorkspace((previous) => ({
       ...previous,
@@ -97,6 +129,7 @@ export function useWorkspace() {
     setTab("settings");
   };
   const removeCard = () => {
+    if (!canEdit) return;
     setWorkspace((previous) => {
       const remaining = previous.cards.filter((item) => item.id !== card.id);
       if (!remaining.length) remaining.push(newCard());
@@ -114,13 +147,51 @@ export function useWorkspace() {
     }
   };
 
+  const logout = async () => {
+    const userId = auth.user?.id;
+    await auth.signOut();
+    if (userId && !(await supabase.auth.getSession()).data.session)
+      clearAccountCache(userId);
+  };
+  const requestLogout = () => {
+    if (cloud.dirty || cloud.status === "saving") {
+      setConfirmation({
+        title: "¿Salir con cambios sin guardar?",
+        text: "Exporta los datos antes de salir. Los cambios no confirmados podrían perderse.",
+        action: logout,
+      });
+    } else void logout();
+  };
+  const requestReload = () => {
+    if (cloud.dirty)
+      setConfirmation({
+        title: "¿Cargar la versión guardada?",
+        text: "Se descartarán los cambios locales sin confirmar. Puedes exportarlos antes de continuar.",
+        action: cloud.reload,
+      });
+    else void cloud.reload();
+  };
+  const requestImport = () =>
+    setConfirmation({
+      title: "¿Importar los cálculos locales?",
+      text: `Se agregarán a la cuenta ${auth.user?.email || "actual"}. No se borrarán los originales ni se reemplazarán los cálculos de la nube.`,
+      action: () => cloud.importLocal(true),
+    });
+
   return {
+    auth,
+    cloud,
+    configured: Boolean(supabase),
+    canEdit,
+    requestLogout,
+    requestReload,
+    requestImport,
     workspace,
     setWorkspace,
     notice,
     setNotice,
     saveError,
-    storageBlocked,
+    storageBlocked: !auth.user && storageBlocked,
     setStorageBlocked,
     tab,
     setTab,
