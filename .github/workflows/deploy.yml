@@ -37,8 +37,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Cambia "tarjeta-cuota-calculador" por el nombre de tu repositorio.
-          VITE_BASE: /tarjeta-cuota-calculador/
+          VITE_BASE: /credit-card-payment-calculator/
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
