@@ -36,6 +36,9 @@ export const PURCHASE_KEYS = [
   "statementBalance",
   "statementRemaining",
   "statementCapital",
+  "statementPayment",
+  "statementIncludesExtras",
+  "statementExtraAmount",
   "statementNextDate",
 ];
 
@@ -149,6 +152,18 @@ export function validatePayload(payload) {
         optional: purchase.entryMode !== "statement",
       });
       numeric(purchase.statementCapital, { optional: true });
+      numeric(purchase.statementPayment, { optional: true });
+      requireValid(typeof purchase.statementIncludesExtras === "boolean");
+      numeric(purchase.statementExtraAmount, { optional: true });
+      requireValid(
+        !purchase.statementIncludesExtras ||
+          (purchase.statementPayment !== "" &&
+            purchase.statementExtraAmount !== ""),
+      );
+      requireValid(
+        purchase.statementIncludesExtras ||
+          purchase.statementExtraAmount === "",
+      );
       numeric(purchase.statementRemaining, { integer: true });
       date(purchase.statementNextDate, purchase.entryMode !== "statement");
     }
@@ -213,8 +228,23 @@ export function hydratePayload(payload, preferences = {}) {
 export function validateRow(row, userId) {
   requireValid(row?.user_id === userId && row.schema_version === 1);
   requireValid(Number.isSafeInteger(row.version) && row.version > 0);
-  validatePayload(row.payload);
-  return row;
+  requireValid(Array.isArray(row.payload?.cards));
+  const payload = {
+    ...row.payload,
+    cards: row.payload.cards.map((card) => ({
+      ...card,
+      purchases: Array.isArray(card?.purchases)
+        ? card.purchases.map((purchase) => ({
+            ...purchase,
+            statementPayment: purchase.statementPayment ?? "",
+            statementIncludesExtras: purchase.statementIncludesExtras ?? false,
+            statementExtraAmount: purchase.statementExtraAmount ?? "",
+          }))
+        : card?.purchases,
+    })),
+  };
+  validatePayload(payload);
+  return { ...row, payload };
 }
 
 export function hasRealData(payload) {

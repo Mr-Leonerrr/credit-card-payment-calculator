@@ -119,18 +119,34 @@ export function project(card, months = 6) {
         number(card.minimumFloor),
       ),
     );
-    const details = active.map((purchase) => ({
-      id: purchase.id,
-      description: purchase.description,
-      capital:
-        purchase.remaining === 1
-          ? purchase.balance
-          : Math.min(purchase.balance, purchase.capital),
-      interest:
-        purchase.installments === 1 && card.interestFreeSingle
+    const details = active.map((purchase) => {
+      const interest =
+        purchase.entryMode !== "statement" &&
+        purchase.installments === 1 &&
+        card.interestFreeSingle
           ? 0
-          : purchase.balance * purchaseMonthlyRate(purchase, rate),
-    }));
+          : purchase.balance * purchaseMonthlyRate(purchase, rate);
+      const includedExtra = purchase.statementIncludesExtras
+        ? number(purchase.statementExtraAmount)
+        : 0;
+      const statementPrincipal =
+        purchase.statementPayment != null && purchase.statementPayment !== ""
+          ? Math.max(
+              0,
+              number(purchase.statementPayment) - interest - includedExtra,
+            )
+          : purchase.capital;
+      return {
+        id: purchase.id,
+        description: purchase.description,
+        capital:
+          purchase.remaining === 1
+            ? purchase.balance
+            : Math.min(purchase.balance, statementPrincipal),
+        interest,
+        extraCharges: includedExtra,
+      };
+    });
     const purchaseCapital = details.reduce(
       (sum, detail) => sum + detail.capital,
       0,
@@ -138,8 +154,13 @@ export function project(card, months = 6) {
     const interest =
       previousBalance * rate +
       details.reduce((sum, detail) => sum + detail.interest, 0);
+    const statementCharges = details.reduce(
+      (sum, detail) => sum + detail.extraCharges,
+      0,
+    );
     const charges =
       number(card.recurringCharges) +
+      statementCharges +
       (month === 0 ? number(card.extraCharges) : 0);
     const capital = previousCapital + purchaseCapital;
     const grossMinimum = capital + interest + charges;

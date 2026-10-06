@@ -84,6 +84,9 @@ export function exportCSV(card, result) {
       "Origen",
       "Fecha de proceso",
       "Capital cuota reportado",
+      "Cuota total reportada con interés EA",
+      "Incluye mora u otros adicionales",
+      "Valor adicional por cuota",
       "Primer corte",
     ],
     ...card.purchases.map((purchase) => [
@@ -101,6 +104,9 @@ export function exportCSV(card, result) {
       purchase.entryMode === "statement" ? "Extracto" : "Compra",
       purchase.processDate || "",
       purchase.statementCapital || "",
+      purchase.statementPayment || "",
+      purchase.statementIncludesExtras ? "Sí" : "No",
+      purchase.statementExtraAmount || "",
       purchase.statementNextDate || "",
     ]),
   ];
@@ -208,6 +214,9 @@ export async function exportPDF(card, result) {
           "Primer corte proyectado",
           "Saldo reportado",
           "Cuota de capital reportada",
+          "Cuota total reportada",
+          "Incluye cargos adicionales",
+          "Valor adicional por cuota",
         ],
       ],
       body: statements.map((purchase) => [
@@ -218,6 +227,13 @@ export async function exportPDF(card, result) {
         purchase.statementCapital === ""
           ? "Saldo / pendientes"
           : money(purchase.statementCapital),
+        purchase.statementPayment === ""
+          ? "Estimación interna"
+          : money(purchase.statementPayment),
+        purchase.statementIncludesExtras ? "Sí" : "No",
+        purchase.statementExtraAmount === ""
+          ? ""
+          : money(purchase.statementExtraAmount),
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [16, 110, 91] },

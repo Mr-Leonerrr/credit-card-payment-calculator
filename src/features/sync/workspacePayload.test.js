@@ -84,6 +84,102 @@ test("statement snapshots survive hydration without normalization filtering", ()
   );
 });
 
+test("statement quota breakdown survives sync validation and rejects incomplete recargos", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    ...blankPurchase(),
+    entryMode: "statement",
+    statementBalance: "800003",
+    statementRemaining: "4",
+    statementNextDate: "2026-10-20",
+    statementPayment: "240000",
+    statementIncludesExtras: true,
+    statementExtraAmount: "5000",
+  });
+  assert.deepEqual(
+    hydratePayload(serializeWorkspace(workspace)).cards,
+    workspace.cards,
+  );
+  const missingExtra = structuredClone(workspace);
+  missingExtra.cards[0].purchases[0].statementExtraAmount = "";
+  assert.throws(
+    () => serializeWorkspace(missingExtra),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+  const uncheckedExtra = structuredClone(workspace);
+  uncheckedExtra.cards[0].purchases[0].statementIncludesExtras = false;
+  assert.throws(
+    () => serializeWorkspace(uncheckedExtra),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+});
+
+test("older cloud snapshots gain empty quota-extra defaults without losing legacy capital", () => {
+  const legacy = emptyWorkspace();
+  legacy.cards[0].purchases.push({
+    ...blankPurchase(),
+    entryMode: "statement",
+    statementBalance: "800003",
+    statementRemaining: "4",
+    statementCapital: "200001",
+    statementNextDate: "2026-10-20",
+  });
+  const row = validateRow(
+    {
+      user_id: "owner",
+      schema_version: 1,
+      version: 3,
+      payload: JSON.parse(
+        JSON.stringify(serializeWorkspace(legacy), (key, value) =>
+          [
+            "statementPayment",
+            "statementIncludesExtras",
+            "statementExtraAmount",
+          ].includes(key)
+            ? undefined
+            : value,
+        ),
+      ),
+    },
+    "owner",
+  );
+  const purchase = row.payload.cards[0].purchases[0];
+  assert.equal(purchase.statementCapital, "200001");
+  assert.equal(purchase.statementPayment, "");
+  assert.equal(purchase.statementIncludesExtras, false);
+  assert.equal(purchase.statementExtraAmount, "");
+});
+
+test("statement payment extras round-trip and reject unchecked or incomplete charges", () => {
+  const workspace = emptyWorkspace();
+  workspace.cards[0].purchases.push({
+    ...blankPurchase(),
+    entryMode: "statement",
+    statementBalance: "800003",
+    statementRemaining: "4",
+    statementNextDate: "2026-10-20",
+    statementPayment: "240000",
+    statementIncludesExtras: true,
+    statementExtraAmount: "5000",
+  });
+  assert.deepEqual(
+    hydratePayload(serializeWorkspace(workspace)).cards,
+    workspace.cards,
+  );
+  const unchecked = structuredClone(workspace);
+  unchecked.cards[0].purchases[0].statementIncludesExtras = false;
+  assert.throws(
+    () => serializeWorkspace(unchecked),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+  const incomplete = structuredClone(workspace);
+  incomplete.cards[0].purchases[0].statementExtraAmount = "";
+  assert.throws(
+    () => serializeWorkspace(incomplete),
+    /INVALID_WORKSPACE_PAYLOAD/,
+  );
+});
+
 test("guest import projects cards only and regenerates every imported id", () => {
   const guest = emptyWorkspace();
   const values = new Map([[STORAGE_KEY, JSON.stringify(guest)]]);

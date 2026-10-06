@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { project, purchaseBalance, purchaseMonthlyRate } from "./calculator.js";
+import {
+  monthlyRate,
+  project,
+  purchaseBalance,
+  purchaseMonthlyRate,
+} from "./calculator.js";
 
 const refinance = {
   id: "refinance",
@@ -54,6 +59,68 @@ test("sin capital reportado divide saldo entre cuotas restantes y liquida la úl
   );
   assert.equal(result.rows[0].purchaseCapital, 200000.75);
   assert.equal(result.rows[3].remaining, 0);
+});
+test("cuota reportada descuenta interés E.A. antes de estimar capital", () => {
+  const payment = 230000;
+  const monthlyInterest =
+    refinance.statementBalance *
+    purchaseMonthlyRate(refinance, monthlyRate(card));
+  const result = project(
+    {
+      ...card,
+      purchases: [
+        {
+          ...refinance,
+          statementCapital: "",
+          statementPayment: String(payment),
+        },
+      ],
+    },
+    4,
+  );
+  assert.ok(
+    Math.abs(result.rows[0].purchaseCapital - (payment - monthlyInterest)) <
+      1e-8,
+  );
+  assert.ok(Math.abs(result.rows[0].interest - monthlyInterest) < 1e-8);
+  assert.ok(Math.abs(result.rows[0].minimum - payment) < 1e-8);
+});
+test("cargo adicional marcado se resta de capital y se suma una sola vez como cargo", () => {
+  const payment = 230000;
+  const extra = 5000;
+  const monthlyInterest =
+    refinance.statementBalance *
+    purchaseMonthlyRate(refinance, monthlyRate(card));
+  const result = project(
+    {
+      ...card,
+      purchases: [
+        {
+          ...refinance,
+          statementCapital: "",
+          statementPayment: String(payment),
+          statementIncludesExtras: true,
+          statementExtraAmount: String(extra),
+        },
+      ],
+    },
+    4,
+  );
+  assert.ok(
+    Math.abs(
+      result.rows[0].purchaseCapital - (payment - monthlyInterest - extra),
+    ) < 1e-8,
+  );
+  assert.ok(Math.abs(result.rows[0].charges - extra) < 1e-8);
+  assert.ok(Math.abs(result.rows[0].minimum - payment) < 1e-8);
+  assert.ok(
+    Math.abs(
+      result.rows[0].details[0].capital +
+        result.rows[0].details[0].interest +
+        result.rows[0].details[0].extraCharges -
+        payment,
+    ) < 1e-8,
+  );
 });
 test("primer corte explícito no depende de pagos supuestos ni de la fecha original", () => {
   const result = project(

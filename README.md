@@ -10,6 +10,7 @@ Aplicación financiera personal en español, hecha con React y Vite, para estima
 - Tasa mensual vencida (MV) o efectiva anual (EA), convertida a mensual automáticamente.
 - Compras a una cuota o diferidas, con fecha, valor original y cuotas pagadas y pendientes.
 - Registro Desde extracto con saldo reportado, cuotas pendientes, tasa particular EA, fecha de proceso y primer corte explícito; adecuado para refinanciaciones y abonos que alteran el saldo.
+- En compras Desde extracto, separa el interés E.A. incluido en la cuota reportada y permite desglosar mora u otros recargos.
 - Un único formulario de compra nueva y una lista separada con edición y eliminación.
 - Saldo anterior separado del capital de las compras registradas, sin sumarlo completo al mínimo.
 - Desglose de capital, intereses, cargos y abonos; pago mínimo y pago total al corte.
@@ -47,7 +48,7 @@ Los campos monetarios aceptan importes como `1234567,89` o `1.234.567,89` y mues
 
 En Agregar movimiento elige **Desde extracto**. Copia cada movimiento con saldo pendiente en su propia fila. Los campos usan los nombres del banco: Valor compra, Plazo, Fecha de transacción, Fecha de proceso, Cuotas pendientes y Saldo pendiente. La tasa particular se ingresa como efectiva anual. Como ejemplo ficticio, `24.5` representa 24,5% EA. Si un extracto utiliza comas de miles, un importe ficticio de `100,000` debe ingresarse como `100000` o `100.000`, no como un decimal.
 
-En este modo no se reconstruye el saldo como valor original dividido entre plazo. El capital pendiente es el **saldo informado**, conservando ajustes, abonos y refinanciaciones. Si se deja vacía la cuota de capital, la estimación divide ese saldo entre las cuotas pendientes. Solo copia Valor Cuota Mes en la cuota de capital si el banco confirma que no incluye intereses. Se calculan intereses mensuales sobre el saldo restante y la última cuota ajusta cualquier diferencia de redondeo. No se infieren cuotas pagadas desde el plazo: cuotas facturadas y cuotas pagadas no son lo mismo.
+En este modo no se reconstruye el saldo como valor original dividido entre plazo. El capital pendiente es el **saldo informado**, conservando ajustes, abonos y refinanciaciones. “Valor cuota mes total reportado” se entiende como la cuota total que ya incluye el interés ordinario calculado con la tasa E.A. del movimiento; se resta ese interés para estimar el capital. Si el banco confirma que el importe es solo capital, deja el campo vacío y la estimación divide el saldo entre las cuotas pendientes. El check “¿Incluye mora u otros valores adicionales?” está desactivado por defecto. Actívalo solo si la cuota incluye recargos adicionales y conoce su importe: indícalo en el campo que aparece. Ese valor se resta del capital y se suma una sola vez a cargos en cada cuota proyectada. Si desconoces el recargo, no actives el check para evitar atribuirlo incorrectamente al capital. La última cuota ajusta cualquier diferencia de redondeo. No se infieren cuotas pagadas desde el plazo: cuotas facturadas y cuotas pagadas no son lo mismo.
 
 **Primer corte a proyectar** indica cuándo empieza a pagarse el saldo que copiaste. Si el saldo pendiente excluye la cuota ya facturada, selecciona el siguiente corte para proyectar ese saldo. Esto no supone que hayas pagado la cuota actual: si sigue exigible, hay que contabilizarla por separado o usar un saldo actualizado del banco. Este modo no reconstruye el pago mínimo exacto del extracto ya emitido.
 
@@ -69,7 +70,7 @@ PDF y CSV contienen los datos del escenario, las compras y los meses elegidos. C
 
 Sin variables de Supabase, la aplicación funciona localmente como invitado. Para habilitar cuentas y sincronización:
 
-1. Crea un proyecto de Supabase. Ejecuta el contenido completo de [supabase/migrations/001_calculation_workspaces.sql](supabase/migrations/001_calculation_workspaces.sql) en su SQL Editor, una sola vez en un proyecto nuevo. La migración requiere el esquema `auth` y los roles que proporciona Supabase; crea la tabla, sus restricciones, RLS de lectura por propietario y el RPC de guardado con control de versión. Los clientes autenticados no pueden hacer INSERT, UPDATE ni DELETE directos.
+1. Crea un proyecto de Supabase. Aplica las migraciones de `supabase/migrations/` en orden con Supabase CLI. Para una base existente donde ya se ejecutó `001_calculation_workspaces.sql`, aplica [supabase/migrations/002_statement_payment_breakdown.sql](supabase/migrations/002_statement_payment_breakdown.sql); amplía el validador de movimientos, sin recrear la tabla ni borrar workspaces. La migración inicial crea la tabla, sus restricciones, RLS de lectura por propietario y el RPC de guardado con control de versión. Los clientes autenticados no pueden hacer INSERT, UPDATE ni DELETE directos.
 2. En Google Cloud configura la pantalla de consentimiento y un cliente OAuth de tipo **Aplicación web**. Si la aplicación es externa y está en pruebas, agrega las cuentas de prueba y revisa sus requisitos de publicación. En **URIs de redireccionamiento autorizados** del cliente registra exactamente `https://<project-ref>.supabase.co/auth/v1/callback`, usando el callback que muestra Supabase. Este callback de Google no es la URL de Netlify ni la del servidor Vite.
 3. En Supabase, **Authentication > Sign In / Providers > Google**, habilita Google e ingresa el client ID y el client secret del cliente OAuth. El secreto va únicamente en ese panel de Supabase: nunca en variables de Vite o Netlify, archivos del repositorio, logs ni chat.
 4. En **Authentication > URL Configuration**, configura **Site URL** como `https://cc-payment-calculator.netlify.app/` y registra estos destinos raíz exactos en **Redirect URLs**, sin comodines ni rutas adicionales:
@@ -81,6 +82,7 @@ Sin variables de Supabase, la aplicación funciona localmente como invitado. Par
    ```
 
    Si tu sitio Netlify tiene otro dominio, sustituye el dominio de producción en ambos lugares. El cliente vuelve al origen raíz del navegador. Si Vite usa otro puerto o pruebas el preview, agrega expresamente su URL raíz exacta (por ejemplo `http://localhost:4173/`); `localhost` y `127.0.0.1` son destinos distintos.
+
 5. Configura localmente en `.env.local` y en las variables del sitio Netlify solo estos valores públicos:
 
    ```dotenv
@@ -89,7 +91,9 @@ Sin variables de Supabase, la aplicación funciona localmente como invitado. Par
    ```
 
    También se admite una clave pública `anon` heredada. Estas variables quedan visibles en el JavaScript del navegador; nunca uses una clave `service_role`, `sb_secret_...` ni el secreto OAuth. Reinicia Vite después de cambiarlas y genera un nuevo build/despliegue en Netlify.
-6. Con cuentas y escenarios ficticios, comprueba el recorrido Google completo en local y en el sitio publicado, la separación entre cuentas y la conservación del modo invitado. Las pruebas automatizadas de este repositorio no configuran ni prueban Google Cloud, el proveedor real de Supabase, sus redirects, correo de identidad ni el despliegue de Netlify.
+
+6. Si actualizas un proyecto Supabase que ya aplicó la migración inicial, aplica también [supabase/migrations/002_statement_payment_breakdown.sql](supabase/migrations/002_statement_payment_breakdown.sql). Solo amplía la allowlist de campos de movimientos; no recrea la tabla ni borra workspaces existentes.
+7. Con cuentas y escenarios ficticios, comprueba el recorrido Google completo en local y en el sitio publicado, la separación entre cuentas y la conservación del modo invitado. Las pruebas automatizadas de este repositorio no configuran ni prueban Google Cloud, el proveedor real de Supabase, sus redirects, correo de identidad ni el despliegue de Netlify.
 
 El guardado usa compare-and-swap (CAS): crea el workspace con versión 1 solo cuando la versión esperada es 0, y cada actualización exige la versión actual e incrementa `version` en 1. `schema_version` permanece en 1. Los guardados obsoletos se rechazan. La eliminación completa del workspace de la cuenta no está disponible en la aplicación ni mediante un RPC; tampoco se permite DELETE directo a los clientes. La eliminación de una cuenta de Supabase Auth queda fuera de esta aplicación y corresponde a la administración por otros medios; no se ofrece un flujo ni una garantía de eliminación de cuenta desde aquí.
 

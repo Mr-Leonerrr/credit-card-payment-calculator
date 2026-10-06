@@ -13,6 +13,9 @@ export const blankPurchase = () => ({
   statementBalance: "",
   statementRemaining: "1",
   statementCapital: "",
+  statementPayment: "",
+  statementIncludesExtras: false,
+  statementExtraAmount: "",
   statementNextDate: "",
   rateOverrideType: "monthly",
 });
