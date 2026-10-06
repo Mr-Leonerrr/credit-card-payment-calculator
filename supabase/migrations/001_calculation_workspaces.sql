@@ -1,6 +1,6 @@
 begin;
 
-create function public.is_valid_calculation_workspace(p_payload jsonb)
+create or replace function public.is_valid_calculation_workspace(p_payload jsonb)
 returns boolean
 language plpgsql
 immutable
@@ -69,7 +69,7 @@ $$;
 
 revoke all on function public.is_valid_calculation_workspace(jsonb) from public, anon, authenticated;
 
-create table public.calculation_workspaces (
+create table if not exists public.calculation_workspaces (
   user_id uuid primary key references auth.users(id) on delete cascade,
   payload jsonb not null check (public.is_valid_calculation_workspace(payload)),
   schema_version integer not null default 1 check (schema_version = 1),
@@ -80,11 +80,14 @@ create table public.calculation_workspaces (
 alter table public.calculation_workspaces enable row level security;
 revoke all on table public.calculation_workspaces from public, anon, authenticated;
 grant select on table public.calculation_workspaces to authenticated;
+
+drop policy if exists calculation_workspaces_owner_select
+  ON public.calculation_workspaces;
 create policy calculation_workspaces_owner_select
   on public.calculation_workspaces for select to authenticated
   using ((select auth.uid()) = user_id);
 
-create function public.save_calculation_workspace(p_payload jsonb, p_expected_version bigint)
+create or replace function public.save_calculation_workspace(p_payload jsonb, p_expected_version bigint)
 returns public.calculation_workspaces
 language plpgsql
 security definer
