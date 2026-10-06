@@ -114,6 +114,14 @@ export function SyncStatus({
           </div>
         </section>
       )}
+      {cloud.status === "remote-update" && !cloud.dirty && (
+        <section className="remote-update-bar" aria-label="Actualización disponible" role="status">
+          <span>Hay cambios nuevos en la nube. Tu formulario actual se conservará hasta que actualices.</span>
+          <button type="button" className="button primary" onClick={requestReload}>
+            <CloudUpload size={16} /> Actualizar ahora
+          </button>
+        </section>
+      )}
     </>
   );
 }

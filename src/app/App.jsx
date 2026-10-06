@@ -42,7 +42,7 @@ export function App() {
     <div className="app-shell">
       <Header
         workspace={workspace}
-        setWorkspace={setWorkspace}
+        toggleTheme={controller.toggleTheme}
         auth={controller.auth}
         configured={controller.configured}
         requestLogout={controller.requestLogout}

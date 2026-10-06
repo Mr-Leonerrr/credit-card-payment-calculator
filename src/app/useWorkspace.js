@@ -16,14 +16,16 @@ import {
   clearAccountCache,
 } from "../features/sync/index.js";
 import { supabase } from "../lib/supabase.js";
+import { readTheme, saveTheme } from "./theme.js";
 
 export function useWorkspace() {
   const [loaded] = useState(() => loadWorkspace());
+  const [theme, setTheme] = useState(() => readTheme(loaded.data.theme));
   const [guestWorkspace, setGuestWorkspace] = useState(loaded.data);
   const [storageBlocked, setStorageBlocked] = useState(Boolean(loaded.blocked));
   const auth = useAuth();
   const cloud = useCloudWorkspace(auth.user);
-  const workspace = auth.user ? cloud.workspace : guestWorkspace;
+  const workspace = { ...(auth.user ? cloud.workspace : guestWorkspace), theme };
   const canEdit =
     !auth.loading && (auth.user ? cloud.canEdit : !storageBlocked);
   const setWorkspace = (update) => {
@@ -47,8 +49,9 @@ export function useWorkspace() {
   const current = calculation.rows[0];
 
   useEffect(() => {
-    document.documentElement.dataset.theme = workspace.theme;
-  }, [workspace.theme]);
+    document.documentElement.dataset.theme = theme;
+    saveTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (storageBlocked || auth.user || auth.loading) return;
@@ -204,6 +207,7 @@ export function useWorkspace() {
     requestDiscard,
     workspace,
     setWorkspace,
+    toggleTheme: () => setTheme((previous) => previous === "dark" ? "light" : "dark"),
     notice,
     setNotice,
     saveError,
