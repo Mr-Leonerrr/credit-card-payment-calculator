@@ -259,7 +259,7 @@ export function PurchaseFields({
               }
               required
             />
-            {editing && (
+            {purchase.interestFree !== true && (
               <Field
                 label="Tasa particular (% MV, opcional)"
                 type="number"

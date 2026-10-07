@@ -94,10 +94,16 @@ Sin variables de Supabase, la aplicación funciona localmente como invitado. Par
 
    También se admite una clave pública `anon` heredada. Estas variables quedan visibles en el JavaScript del navegador; nunca uses una clave `service_role`, `sb_secret_...` ni el secreto OAuth. Reinicia Vite después de cambiarlas y genera un nuevo build/despliegue en Netlify.
 
-6. Las migraciones `002` a `006` amplían los campos permitidos para movimientos, saldos y pagos; no recrean la tabla ni borran workspaces existentes. Aplícalas en orden si todavía no están instaladas.
+6. Las migraciones `002` a `006` amplían los campos permitidos para movimientos, saldos y pagos; la [007_optional_previous_balance_charges.sql](supabase/migrations/007_optional_previous_balance_charges.sql) corrige la validación de cargos opcionales vacíos del saldo anterior. No recrean la tabla ni borran workspaces existentes. Aplícalas en orden si todavía no están instaladas.
 7. Con cuentas y escenarios ficticios, comprueba el recorrido Google completo en local y en el sitio publicado, la separación entre cuentas y la conservación del modo invitado. Las pruebas automatizadas de este repositorio no configuran ni prueban Google Cloud, el proveedor real de Supabase, sus redirects, correo de identidad ni el despliegue de Netlify.
 
 El guardado usa compare-and-swap (CAS): crea el workspace con versión 1 solo cuando la versión esperada es 0, y cada actualización exige la versión actual e incrementa `version` en 1. `schema_version` permanece en 1. Los guardados obsoletos se rechazan. La eliminación completa del workspace de la cuenta no está disponible en la aplicación ni mediante un RPC; tampoco se permite DELETE directo a los clientes. La eliminación de una cuenta de Supabase Auth queda fuera de esta aplicación y corresponde a la administración por otros medios; no se ofrece un flujo ni una garantía de eliminación de cuenta desde aquí.
+
+### Error 400 al guardar una compra sin intereses
+
+Revisa el cuerpo de respuesta de `save_calculation_workspace` en la pestaña Network del navegador. Si contiene `INVALID_WORKSPACE_PAYLOAD` (código PostgreSQL `22023`), verifica que la base de datos tenga todas las migraciones aplicadas: [005_purchase_interest_free.sql](supabase/migrations/005_purchase_interest_free.sql) permite `interestFree` y [006_credit_movements.sql](supabase/migrations/006_credit_movements.sql) permite `creditImpact` e historial de pagos, enviados por el cliente actual. Si faltan, aplícalas en orden después de `001` a `004`, mediante Supabase CLI o el SQL Editor del proyecto, y vuelve a sincronizar. No borres el workspace ni retires esos campos del payload: se perderían las condiciones de la compra o la reversibilidad de los movimientos de cupo. Un despliegue del frontend no aplica las migraciones a Supabase.
+
+Si las funciones v4, v5 y v6 ya existen, aplica también [007_optional_previous_balance_charges.sql](supabase/migrations/007_optional_previous_balance_charges.sql). La validación original v4 rechaza `previousBalanceIncludedCharges: ""`, aunque ese es el valor que envía el cliente cuando el saldo anterior no incluye cargos. La migración permite ese valor opcional, conserva las validaciones de cargos declarados y no cambia los datos ni las versiones guardadas.
 
 ## Estructura del proyecto
 
