@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
+import { blankPurchase } from "../../src/features/purchases/model/purchase.js";
+import {
+  emptyWorkspace,
+  serializeWorkspace,
+} from "../../src/features/sync/workspacePayload.js";
 
 const migrationUrls = [
   new URL("../migrations/001_calculation_workspaces.sql", import.meta.url),
@@ -10,6 +15,7 @@ const migrationUrls = [
   new URL("../migrations/004_previous_balance_interest_breakdown.sql", import.meta.url),
   new URL("../migrations/005_purchase_interest_free.sql", import.meta.url),
   new URL("../migrations/006_credit_movements.sql", import.meta.url),
+  new URL("../migrations/007_optional_previous_balance_charges.sql", import.meta.url),
 ];
 const ownerA = "00000000-0000-4000-8000-000000000001";
 const ownerB = "00000000-0000-4000-8000-000000000002";
@@ -262,6 +268,54 @@ describe(
       }
     });
 
+    it("saves a complete client payload with empty optional prior-balance charges and a 0% purchase", async () => {
+      const workspace = emptyWorkspace();
+      workspace.cards[0].purchases.push({
+        ...blankPurchase(),
+        description: "Compra promocional",
+        amount: "900000",
+        installments: "3",
+        interestFree: true,
+      });
+      const clientPayload = serializeWorkspace(workspace);
+      assert.equal(clientPayload.cards[0].previousBalanceIncludedCharges, "");
+      const saved = await asRole("authenticated", ownerA, () =>
+        save(0, clientPayload),
+      );
+      assert.deepEqual(saved.payload, clientPayload);
+      assert.equal(Number(saved.version), 1);
+    });
+
+    it("keeps prior-balance charge validation strict while accepting the optional empty value", async () => {
+      for (const [includesCharges, includedCharges, expected] of [
+        [false, "", true],
+        [false, "0", false],
+        [false, null, false],
+        [true, "", false],
+        [true, "0", true],
+        [true, "10.25", true],
+        [true, "101", false],
+        [true, "-1", false],
+        [true, "invalid", false],
+      ]) {
+        const clientPayload = serializeWorkspace(emptyWorkspace());
+        Object.assign(clientPayload.cards[0], {
+          previousBalance: "100",
+          previousBalanceIncludesCharges: includesCharges,
+          previousBalanceIncludedCharges: includedCharges,
+        });
+        const result = await database.query(
+          "select public.is_valid_calculation_workspace($1::jsonb) as valid",
+          [JSON.stringify(clientPayload)],
+        );
+        assert.equal(
+          result.rows[0].valid,
+          expected,
+          JSON.stringify({ includesCharges, includedCharges }),
+        );
+      }
+    });
+
     it("accepts the per-purchase 0% flag and rejects non-boolean values", async () => {
       const purchasePayload = (interestFree) => ({
         cards: [
@@ -288,11 +342,20 @@ describe(
                 statementIncludesExtras: false,
                 statementExtraAmount: "",
                 interestFree,
+                creditImpact: false,
               },
             ],
           },
         ],
       });
+      const compatibility = await database.query(
+        `select public.is_valid_calculation_workspace_v4($1::jsonb) as before_interest_free,
+          public.is_valid_calculation_workspace($1::jsonb) as current_schema`,
+        [JSON.stringify(purchasePayload(true))],
+      );
+      assert.deepEqual(compatibility.rows, [
+        { before_interest_free: false, current_schema: true },
+      ]);
       await asRole("authenticated", ownerA, async () => {
         assert.equal(Number((await save(0, purchasePayload(true))).version), 1);
         assert.equal(Number((await save(1, purchasePayload(false))).version), 2);
